@@ -62,20 +62,46 @@ with st.form("ingestion_form", clear_on_submit=False):
     submit_button = st.form_submit_index = st.form_submit_button("Invia al Sistema Cloud")
 
 # Logica temporanea alla pressione del bottone (Placeholder per il prossimo step)
+# Logica di business alla sottomissione del form
 if submit_button:
     if not subject_id or not uploaded_file:
         st.error("❌ Errore: L'ID Soggetto e il File Multimediale sono campi obbligatori!")
     else:
-        st.success(f"📌 Form sottomesso correttamente per il soggetto: {subject_id}!")
-        st.info("Nel prossimo step collegheremo questo bottone al caricamento reale su Azurite.")
+        with st.spinner("Caricamento del file e dei metadati sui sistemi Azure in corso..."):
+            try:
+                # 1. Leggiamo i byte del file direttamente dalla memoria di Streamlit
+                file_bytes = uploaded_file.getvalue()
+                original_name = uploaded_file.name
 
-        # Dimostrazione di lettura metadati del file
-        file_details = {
-            "Nome File": uploaded_file.name,
-            "Tipo MIME": uploaded_file.type,
-            "Dimensione (Bytes)": uploaded_file.size
-        }
-        st.json(file_details)
+                # 2. Invochiamo il caricamento sul Blob Storage
+                # Importiamo le funzioni localmente o in cima al file
+                from utility.storage_manager import upload_file_to_blob, save_metadata_to_table
+
+                blob_name, unique_id = upload_file_to_blob(file_bytes, original_name)
+
+                # 3. Prepariamo il dizionario dei metadati da salvare in Table Storage
+                metadata_payload = {
+                    "OriginalFileName": original_name,
+                    "BlobName": blob_name,
+                    "AcquisitionDate": str(acquisition_date), # Convertiamo la data in stringa ISO
+                    "SourceType": source_type,
+                    "Context": context_reg,
+                    "FileSize": uploaded_file.size,
+                    "MimeType": uploaded_file.type,
+                    "Processed": False,                       # Flag utile per il Worker asincrono
+                    "AnalysisResults": "{}"                    # Campo JSON vuoto per i risultati multiprofilo futuri
+                }
+
+                # 4. Salviamo i metadati nella Tabella NoSQL
+                save_metadata_to_table(subject_id, unique_id, metadata_payload)
+
+                # Successo!
+                st.success("✅ Operazione completata con successo!")
+                st.info(f"**ID Univoco Assegnato:** {unique_id}")
+                st.write(f"Il file è stato storicizzato nel Blob come `{blob_name}` e i metadati sono indicizzati NoSQL.")
+
+            except Exception as e:
+                st.error(f"❌ Si è verificato un errore durante il salvataggio in Cloud: {e}")
 
 # Footer accademico obbligatorio
 st.sidebar.markdown("---")
