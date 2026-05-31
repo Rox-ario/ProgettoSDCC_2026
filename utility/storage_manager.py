@@ -2,8 +2,9 @@ import os
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueServiceClient
-from azure.data.tables import TableServiceClient
+from azure.data.tables import TableServiceClient, TableEntity
 from azure.core.exceptions import ResourceExistsError
+import uuid
 
 # Blocco 1: Caricamento delle variabili d'ambiente dal file .env
 load_dotenv()
@@ -65,6 +66,45 @@ def initialize_azure_resources():
         print(f"[ERRORE] Impossibile creare la Tabella: {e}")
 
     print("=== Fine Inizializzazione Risorse Azure ===")
+
+def upload_file_to_blob(file_bytes, original_filename):
+    """
+    Genera un ID univoco, rinomina il file e lo carica nel Blob Storage.
+    Ritorna: (string: unique_blob_name, string: unique_id)
+    """
+    blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
+
+    # Blocco Logico 1: Generazione ID univoco mantenendo l'estensione originale
+    ext = os.path.splitext(original_filename)[1] # Es: .mp4 o .png
+    unique_id = str(uuid.uuid4())
+    unique_blob_name = f"{unique_id}{ext}"
+
+    # Blocco Logico 2: Connessione al client del blob e upload dei byte
+    blob_client = blob_service_client.get_blob_client(container=BLOB_CONTAINER_NAME, blob=unique_blob_name)
+    blob_client.upload_blob(file_bytes, overwrite=True)
+
+    return unique_blob_name, unique_id
+
+
+def save_metadata_to_table(subject_id, unique_id, metadata):
+    """
+    Salva i metadati strutturati su Azure Table Storage.
+    Mappa il subject_id come PartitionKey e l'unique_id come RowKey.
+    """
+    table_service_client = TableServiceClient.from_connection_string(conn_str=CONNECTION_STRING)
+    table_client = table_service_client.get_table_client(table_name=TABLE_NAME)
+
+    # Blocco Logico 3: Costruzione dell'entità NoSQL rispettando i vincoli di Azure
+    entity = TableEntity()
+    entity["PartitionKey"] = subject_id
+    entity["RowKey"] = unique_id
+
+    # Popoliamo l'entità con gli altri metadati passati come dizionario
+    for key, value in metadata.items():
+        entity[key] = value
+
+    # Inseriamo l'entità nel Table Storage
+    table_client.create_entity(entity=entity)
 
 if __name__ == "__main__":
     # Consente l'esecuzione diretta del file per testare l'infrastruttura locale
