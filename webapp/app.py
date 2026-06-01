@@ -7,7 +7,7 @@ if PROJECT_ROOT not in sys.path:
 
 import streamlit as st
 from datetime import datetime
-from utility.storage_manager import initialize_azure_resources
+from utility.storage_manager import initialize_azure_resources, send_message_to_queue
 
 # Configurazione della pagina Streamlit
 st.set_page_config(
@@ -61,11 +61,10 @@ with st.form("ingestion_form", clear_on_submit=False):
     # Pulsante di sottomissione del form
     submit_button = st.form_submit_index = st.form_submit_button("Invia al Sistema Cloud")
 
-# Logica temporanea alla pressione del bottone (Placeholder per il prossimo step)
 # Logica di business alla sottomissione del form
 if submit_button:
     if not subject_id or not uploaded_file:
-        st.error("❌ Errore: L'ID Soggetto e il File Multimediale sono campi obbligatori!")
+        st.error("⚠️ Attenzione: compilare i campi ID Soggetto e File Multimediale")
     else:
         with st.spinner("Caricamento del file e dei metadati sui sistemi Azure in corso..."):
             try:
@@ -94,6 +93,8 @@ if submit_button:
 
                 # 4. Salviamo i metadati nella Tabella NoSQL
                 save_metadata_to_table(subject_id, unique_id, metadata_payload)
+
+                send_message_to_queue(unique_id, blob_name)
 
                 # Successo!
                 st.success("✅ Operazione completata con successo!")

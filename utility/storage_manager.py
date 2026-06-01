@@ -1,3 +1,4 @@
+import json
 import os
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
@@ -105,6 +106,27 @@ def save_metadata_to_table(subject_id, unique_id, metadata):
 
     # Inseriamo l'entità nel Table Storage
     table_client.create_entity(entity=entity)
+
+def send_message_to_queue(unique_id, blob_name):
+    """
+    Invia un messaggio in formato JSON alla coda di Azure Queue Storage
+    per notificare il Worker asincrono.
+    """
+    queue_service_client = QueueServiceClient.from_connection_string(CONNECTION_STRING)
+    queue_client = queue_service_client.get_queue_client(QUEUE_NAME)
+
+    # Blocco Logico 1: Creazione del payload minimo in formato JSON
+    message_content = {
+        "task_id": unique_id,
+        "blob_target": blob_name
+    }
+
+    # Trasformiamo il dizionario in stringa di testo
+    json_message = json.dumps(message_content)
+
+    # Blocco Logico 2: Invio del messaggio alla coda
+    queue_client.send_message(json_message)
+    print(f"[OK] Messaggio di notifica inviato alla coda per il task: {unique_id}")
 
 if __name__ == "__main__":
     # Consente l'esecuzione diretta del file per testare l'infrastruttura locale
