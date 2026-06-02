@@ -59,7 +59,7 @@ with st.form("ingestion_form", clear_on_submit=False):
     )
 
     # Pulsante di sottomissione del form
-    submit_button = st.form_submit_index = st.form_submit_button("Invia al Sistema Cloud")
+    submit_button = st.form_submit_button("Invia al Sistema Cloud")
 
 # Logica di business alla sottomissione del form
 if submit_button:
