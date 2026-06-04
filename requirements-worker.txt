@@ -1,9 +1,10 @@
-streamlit==1.32.0
 opencv-python-headless==4.9.0.80
 azure-storage-blob==12.19.0
 azure-storage-queue==12.9.0
 azure-data-tables==12.5.0
-azure-ai-vision-imageanalysis==1.0.0b1
 python-dotenv==1.0.1
 azure-core
-opencv-python
+deepface==0.0.100
+tensorflow==2.21.0
+protobuf>=6.31.1,<8.0.0
+

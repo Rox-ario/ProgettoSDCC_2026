@@ -1,50 +1,58 @@
 import os
+# Silenziamo i log nativi di TensorFlow prima di importare DeepFace
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import time
 import json
 import logging
 import tempfile
 import shutil
 from dotenv import load_dotenv
-import cv2  # OpenCV Headless
+import cv2
 from azure.storage.queue import QueueClient
 from azure.storage.blob import BlobServiceClient
 
-# Configurazione Logging coerente (Zittiamo l'SDK di Azure)
+# Importazione del motore AI raccomandato dal Docente
+from deepface import DeepFace
+
+# Configurazione del Logging Applicativo chiaro e pulito
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logging.getLogger("azure.core.pipeline").setLevel(logging.WARNING)
 logging.getLogger("azure.storage").setLevel(logging.WARNING)
 
 def process_video_frames(video_path, output_dir, interval_seconds=1):
-    """Apre il video ed estrae i frame a intervalli regolari di secondi."""
+    """Apre il video ed estrae i frame a intervalli regolari calcolati sui FPS."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        raise ValueError("Impossibile aprire il file video con OpenCV.")
+        raise ValueError("Impossibile aprire il file video locale con OpenCV.")
 
-    # Recuperiamo dinamicamente il Frame Rate del video
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    logger.info(f"Video aperto correttamente. FPS: {fps} | Frame Totali: {total_frames}")
+    logger.info(f"[OpenCV] Video caricato. FPS: {fps:.2f} | Frame Totali: {total_frames}")
 
-    # Calcoliamo quanti frame saltare per rispettare l'intervallo in secondi
+    # Calcolo matematico dello step per svincolarsi dal framerate nativo
     frame_step = max(1, int(fps * interval_seconds))
     extracted_count = 0
-    frame_number = 0
+    frame_id = 0
 
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_number % frame_step == 0:
+        if frame_id % frame_step == 0:
+            ret, frame = cap.read()  # Decodifica effettiva solo del frame target
+            if not ret:
+                break
             frame_filename = f"frame_{extracted_count:04d}.jpg"
-            cv2.imwrite(os.path.join(output_dir, frame_filename), frame)
+            frame_output_path = os.path.join(output_dir, frame_filename)
+            cv2.imwrite(frame_output_path, frame)
             extracted_count += 1
-
-        frame_number += 1
+        else:
+            ret = cap.grab()  # Salto veloce del frame in memoria senza decodifica grafica
+            if not ret:
+                break
+        frame_id += 1
 
     cap.release()
-    logger.info(f"Estrazione completata. Estratti {extracted_count} frame nella directory temporanea.")
+    logger.info(f"[OpenCV] Estrazione completata: {extracted_count} frame pronti in memoria locale.")
     return extracted_count
 
 def main():
@@ -55,99 +63,122 @@ def main():
     container_name = os.getenv("BLOB_CONTAINER_NAME", "multimedia-contents")
 
     if not connection_string:
-        logger.error("AZURE_STORAGE_CONNECTION_STRING non trovata nel file .env")
+        logger.error("AZURE_STORAGE_CONNECTION_STRING non configurata nel file .env")
         return
 
-    # Inizializzazione Client Azure Storage
+    # Inizializzazione dei Client SDK di Azure Storage (Azurite locale)
     queue_client = QueueClient.from_connection_string(conn_str=connection_string, queue_name=queue_name)
     blob_service_client = BlobServiceClient.from_connection_string(conn_str=connection_string)
 
-    logger.info(f"Worker in ascolto (Fase 3.2). Coda: '{queue_name}' | Container: '{container_name}'")
+    logger.info(f"=== Worker AI in ascolto sulla coda '{queue_name}' ===")
 
     while True:
         try:
+            # Polling asincrono con Lock di Visibility a 5 minuti
             messages = queue_client.receive_messages(max_messages=1, visibility_timeout=300)
             message_list = list(messages)
 
             if not message_list:
-                time.sleep(5)
+                time.sleep(5)  # Backoff incrementale passivo
                 continue
 
             message = message_list[0]
-            logger.info(f"Preso in carico messaggio ID: {message.id}")
+            logger.info(f"--- Nuovo Task Rilevato! Message ID: {message.id} ---")
 
+            # Gestione della Poison Pill cumulativa
             if message.dequeue_count > 5:
-                logger.critical(f"Rilevata Poison Pill! Rimozo messaggio ID: {message.id}")
+                logger.critical(f"Poison Pill rilevata! Rimozione forzata del messaggio ID: {message.id}")
                 queue_client.delete_message(message.id, message.pop_receipt)
                 continue
 
-            # Creazione della directory temporanea ephemera di lavoro
+            # Allocazione dello storage temporaneo effimero
             base_temp_dir = tempfile.mkdtemp(prefix="ai_worker_")
-            # Sottocartella specifica dove isoleremo solo i frame pronti per l'AI
             frames_dir = os.path.join(base_temp_dir, "extracted_frames")
             os.makedirs(frames_dir, exist_ok=True)
 
             try:
-                # 1. Decodifica del JSON proveniente dalla coda
+                # 1. Parsing sicuro dei metadati del task
                 try:
                     payload = json.loads(message.content)
-                    blob_target = payload.get("blob_target")
-                    if not blob_target:
-                        raise KeyError("Chiave 'blob_target' mancante nel payload.")
+                    blob_target = payload["blob_target"]
                 except (json.JSONDecodeError, KeyError) as json_err:
-                    logger.critical(f"Poison Pill Strutturale. Errore parsing: {json_err}")
+                    logger.critical(f"Poison Pill Strutturale! JSON non valido. Errore: {json_err}")
                     queue_client.delete_message(message.id, message.pop_receipt)
                     continue
 
-                # 2. DOWNLOAD DEL FILE DAL BLOB STORAGE
+                # 2. Download del file binario dal Cloud Blob Storage locale
                 local_file_path = os.path.join(base_temp_dir, blob_target)
-                logger.info(f"Scaricamento del blob '{blob_target}' dal container '{container_name}'...")
+                logger.info(f"Scaricamento del blob '{blob_target}' in corso...")
 
                 blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_target)
-
                 with open(local_file_path, "wb") as download_file:
-                    download_stream = blob_client.download_blob()
-                    download_file.write(download_stream.readall())
-                logger.info(f"File scaricato localmente in: {local_file_path}")
+                    download_file.write(blob_client.download_blob().readall())
+                logger.info("Download completato con successo.")
 
-                # 3. DISCRIMINAZIONE TIPO FILE ED ESTRAZIONE FRAME
+                # 3. Pipeline di scomposizione multimediale
                 _, file_extension = os.path.splitext(blob_target.lower())
-                video_extensions = ['.mp4', '.avi', '.mov', '.mkv']
-                image_extensions = ['.jpg', '.jpeg', '.png']
-
-                if file_extension in video_extensions:
-                    logger.info("Rilevato file Video. Avvio estrazione frame ad intervalli regolari...")
-                    # Estraiamo 1 frame ogni 1 secondo (modificabile se necessario)
-                    num_frames = process_video_frames(local_file_path, frames_dir, interval_seconds=1)
-                elif file_extension in image_extensions:
-                    logger.info("Rilevato file Immagine singola. Copia diretta nella cartella di processing.")
-                    # Se è un'immagine singola, la copiamo semplicemente nella cartella dei frame per uniformità
+                if file_extension in ['.mp4', '.avi', '.mov', '.mkv']:
+                    process_video_frames(local_file_path, frames_dir, interval_seconds=1)
+                elif file_extension in ['.jpg', '.jpeg', '.png']:
                     shutil.copy(local_file_path, os.path.join(frames_dir, "frame_0000.jpg"))
-                    num_frames = 1
                 else:
-                    logger.error(f"Formato file '{file_extension}' non supportato dai requisiti di progetto.")
+                    logger.error(f"Formato '{file_extension}' non supportato. Scarto il task.")
                     queue_client.delete_message(message.id, message.pop_receipt)
                     continue
 
-                # --- QUI IN FUTURO (Fase 3.3) CHIAMEREMO LE API DI AZURE AI FACENDO UN LOOP DEI FILE IN 'frames_dir' ---
-                logger.info(f"Fase 3.2 completata con successo. {num_frames} immagini pronte in {frames_dir}.")
+                # 4. FASE 3.3: INFERENZA AI TRAMITE DEEPFACE LOCALE
+                logger.info("Inizializzazione DeepFace. Avvio analisi della sequenza emotiva...")
 
-                # Rimuoviamo il messaggio dalla coda perché questa fase intermedia è andata a buon fine
+                analysis_records = []
+                frame_files = sorted(os.listdir(frames_dir))
+
+                for idx, frame_file in enumerate(frame_files):
+                    frame_path = os.path.join(frames_dir, frame_file)
+
+                    try:
+                        # Ottimizzazione: eseguiamo solo 'emotion'. enforce_detection=False evita crash protetti.
+                        predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False)
+
+                        # DeepFace restituisce una lista di dizionari (uno per ogni volto rilevato nel frame)
+                        for face_index, face_data in enumerate(predictions):
+                            if 'emotion' in face_data:
+                                record = {
+                                    "timestamp_second": idx,
+                                    "face_id": face_index,
+                                    "dominant_emotion": face_data['dominant_emotion'],
+                                    "confidence": round(face_data.get('face_confidence', 0), 4),
+                                    # Punteggi percentuali grezzi di tutte le emozioni
+                                    "metrics": face_data['emotion']
+                                }
+                                analysis_records.append(record)
+                                logger.info(f" -> Frame {frame_file} (Secondo {idx}): Volto {face_index} -> Emozione: {face_data['dominant_emotion'].upper()} (Conf: {record['confidence']})")
+
+                    except Exception as single_frame_err:
+                        logger.error(f"Impossibile analizzare il frame {frame_file}: {single_frame_err}")
+
+                logger.info(f"Analisi AI conclusa. Estratti {len(analysis_records)} record emotivi totali.")
+
+                # -------------------------------------------------------------
+                # TODO / PROSSIMO PASSO (Fase 3.4): Scrittura permanente di 'analysis_records' su Table Storage
+                # -------------------------------------------------------------
+                logger.info("[Placeholder] Pronto per la persistenza NoSQL su Azure Table Storage...")
+
+                # 5. Rimozione definitiva del messaggio (Acknowledge)
                 queue_client.delete_message(message.id, message.pop_receipt)
-                logger.info(f"Messaggio {message.id} rimosso con successo.")
+                logger.info(f"Task ID {message.id} rimosso correttamente dalla coda.")
 
-            except Exception as proc_err:
-                logger.error(f"Errore di elaborazione transitorio: {proc_err}")
-                logger.info("Il messaggio tornerà visibile allo scadere del timeout.")
+            except Exception as task_err:
+                logger.error(f"Errore critico durante la lavorazione del Task: {task_err}")
+                logger.info("Il messaggio non viene eliminato e tornerà disponibile nella coda.")
 
             finally:
-                # Pulizia totale e tassativa del file system locale
+                # 6. Pulizia radicale del file system temporaneo effimero (Stateless constraint)
                 if os.path.exists(base_temp_dir):
                     shutil.rmtree(base_temp_dir)
-                    logger.info("Pulizia della directory temporanea completata.")
+                    logger.info("Directory temporanea locale rimossa. Stato effimero azzerato.")
 
         except Exception as queue_err:
-            logger.error(f"Errore interazione Storage: {queue_err}")
+            logger.error(f"Errore di comunicazione con Azure Queue infrastructure: {queue_err}")
             time.sleep(10)
 
 if __name__ == "__main__":
