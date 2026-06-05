@@ -94,7 +94,7 @@ if submit_button:
                 # 4. Salviamo i metadati nella Tabella NoSQL
                 save_metadata_to_table(subject_id, unique_id, metadata_payload)
 
-                send_message_to_queue(unique_id, blob_name)
+                send_message_to_queue(unique_id, blob_name, subject_id)
 
                 # Successo!
                 st.success("✅ Operazione completata con successo!")
