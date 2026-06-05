@@ -107,18 +107,20 @@ def save_metadata_to_table(subject_id, unique_id, metadata):
     # Inseriamo l'entità nel Table Storage
     table_client.create_entity(entity=entity)
 
-def send_message_to_queue(unique_id, blob_name):
+def send_message_to_queue(unique_id, blob_name, partition_key):
     """
     Invia un messaggio in formato JSON alla coda di Azure Queue Storage
-    per notificare il Worker asincrono.
+    per notificare il Worker asincrono. Ora include le chiavi per il Table Storage.
     """
     queue_service_client = QueueServiceClient.from_connection_string(CONNECTION_STRING)
     queue_client = queue_service_client.get_queue_client(QUEUE_NAME)
 
-    # Blocco Logico 1: Creazione del payload minimo in formato JSON
+    # Blocco Logico 1: Creazione del payload aggiornato con il nuovo contratto
     message_content = {
         "task_id": unique_id,
-        "blob_target": blob_name
+        "blob_target": blob_name,
+        "PartitionKey": partition_key,  # Aggiunto: Chiave di partizione NoSQL
+        "RowKey": unique_id             # Aggiunto: Chiave di riga NoSQL (coincide con task_id)
     }
 
     # Trasformiamo il dizionario in stringa di testo

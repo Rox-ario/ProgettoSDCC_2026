@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 import cv2
 from azure.storage.queue import QueueClient
 from azure.storage.blob import BlobServiceClient
+from azure.data.tables import TableClient, UpdateMode
+from azure.core.exceptions import HttpResponseError
 
 # Importazione del motore AI raccomandato dal Docente
 from deepface import DeepFace
@@ -72,6 +74,11 @@ def main():
 
     logger.info(f"=== Worker AI in ascolto sulla coda '{queue_name}' ===")
 
+    # Connessione alla Tabella Storage per la persistenza dei risultati (Fase 3.4)
+    connection_string = "UseDevelopmentStorage=true"
+    table_name = "MediaMetadata"
+    table_client = TableClient.from_connection_string(conn_str=connection_string, table_name=table_name)
+
     while True:
         try:
             # Polling asincrono con Lock di Visibility a 5 minuti
@@ -100,9 +107,13 @@ def main():
                 # 1. Parsing sicuro dei metadati del task
                 try:
                     payload = json.loads(message.content)
+
+                    current_subject_id = payload["PartitionKey"]
+                    current_task_id = payload["RowKey"]
                     blob_target = payload["blob_target"]
+
                 except (json.JSONDecodeError, KeyError) as json_err:
-                    logger.critical(f"Poison Pill Strutturale! JSON non valido. Errore: {json_err}")
+                    logger.critical(f"Poison Pill Strutturale! Manca una chiave del contratto JSON. Errore: {json_err}")
                     queue_client.delete_message(message.id, message.pop_receipt)
                     continue
 
@@ -158,14 +169,32 @@ def main():
 
                 logger.info(f"Analisi AI conclusa. Estratti {len(analysis_records)} record emotivi totali.")
 
-                # -------------------------------------------------------------
-                # TODO / PROSSIMO PASSO (Fase 3.4): Scrittura permanente di 'analysis_records' su Table Storage
-                # -------------------------------------------------------------
                 logger.info("[Placeholder] Pronto per la persistenza NoSQL su Azure Table Storage...")
+                # 1. Serializzazione: Convertiamo la lista di dizionari in una stringa JSON
+                results_json = json.dumps(analysis_records)
 
-                # 5. Rimozione definitiva del messaggio (Acknowledge)
-                queue_client.delete_message(message.id, message.pop_receipt)
-                logger.info(f"Task ID {message.id} rimosso correttamente dalla coda.")
+                # 3. Preparazione dell'entità per il Merge
+                entity_update = {
+                    "PartitionKey": current_subject_id,
+                    "RowKey": current_task_id,
+                    "Processed": True,
+                    "AnalysisResults": results_json
+                }
+
+                try:
+                    # 4. UpdateMode.MERGE aggiorna solo i campi specificati, lasciando intatti i metadati originali
+                    table_client.update_entity(entity=entity_update, mode=UpdateMode.MERGE)
+                    print(f"[OK] Risultati salvati in Table Storage per il task: {current_task_id}")
+
+                    # 5. SOLO ORA eliminiamo il messaggio dalla coda.
+                    # Se il salvataggio sul DB fallisce, non cancelliamo il messaggio,
+                    # così la coda ce lo riproporrà in futuro (At-Least-Once Delivery).
+                    queue_client.delete_message(message.id, message.pop_receipt)
+                    print(f"[OK] Task {current_task_id} rimosso dalla coda.")
+
+                except HttpResponseError as e:
+                    print(f"[ERRORE] Impossibile aggiornare la Table Storage: {e}")
+                    # Il messaggio NON viene cancellato e tornerà visibile nella coda tra 300 secondi
 
             except Exception as task_err:
                 logger.error(f"Errore critico durante la lavorazione del Task: {task_err}")
