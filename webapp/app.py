@@ -3,6 +3,7 @@ import sys
 import json
 import pandas as pd
 from azure.data.tables import TableClient
+from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import HttpResponseError
 
 # Assicuriamoci che la radice del progetto sia nel sys.path *prima* di importare i pacchetti locali
@@ -150,7 +151,34 @@ with tab_dashboard:
                     # Estraiamo l'entità scelta
                     entita_selezionata = next(e for e in risultati if e['RowKey'] == selected_task_id)
 
-                    # Decodifichiamo il JSON salvato dal worker
+                    # --- ANTEPRIMA DEL FILE ORIGINALE ---
+                    blob_name = entita_selezionata.get('BlobName', '')
+                    mime_type = entita_selezionata.get('MimeType', '')
+                    original_name = entita_selezionata.get('OriginalFileName', 'File')
+
+                    if blob_name:
+                        try:
+                            blob_service = BlobServiceClient.from_connection_string(AZURITE_CONNECTION_STRING)
+                            blob_client = blob_service.get_blob_client(
+                                container=os.getenv("BLOB_CONTAINER_NAME", "multimedia-contents"),
+                                blob=blob_name
+                            )
+                            file_bytes = blob_client.download_blob().readall()
+
+                            st.write("### 🖼️ Anteprima del Contenuto Originale")
+                            if mime_type.startswith('image/'):
+                                st.image(file_bytes, caption=original_name, use_column_width=True)
+                            elif mime_type.startswith('video/'):
+                                st.video(file_bytes)
+                                st.caption(original_name)
+                            else:
+                                st.info(f"Tipo di file `{mime_type}` non supportato per l'anteprima.")
+
+                        except Exception as preview_err:
+                            st.warning(f"⚠️ Impossibile caricare l'anteprima dal Blob Storage: {preview_err}")
+
+                    st.divider()
+
                     # Decodifichiamo il JSON salvato dal worker
                     risultati_raw = entita_selezionata.get('AnalysisResults', '[]')
                     dati_emozioni = json.loads(risultati_raw)
