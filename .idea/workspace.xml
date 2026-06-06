@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="47426e6c-af1e-4454-b3e0-3841f53cb09f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/webapp/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/webapp/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,6 +37,9 @@
     <commands />
     <urls />
   </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="Security Analysis" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
 }</component>
@@ -55,6 +59,7 @@
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/rosar/Desktop/ProgettoSDCC&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -144,6 +149,8 @@
       <workItem from="1780570038774" duration="2613000" />
       <workItem from="1780572916448" duration="1944000" />
       <workItem from="1780589750429" duration="68000" />
+      <workItem from="1780653618976" duration="5314000" />
+      <workItem from="1780740445339" duration="1970000" />
     </task>
     <servers />
   </component>
