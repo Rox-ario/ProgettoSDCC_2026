@@ -3,7 +3,6 @@ opencv-python-headless==4.9.0.80
 azure-storage-blob==12.19.0
 azure-storage-queue==12.9.0
 azure-data-tables==12.5.0
-azure-ai-vision-imageanalysis==1.0.0b1
 python-dotenv==1.0.1
+plotly>=5.18.0
 azure-core
-opencv-python
