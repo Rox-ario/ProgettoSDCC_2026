@@ -413,76 +413,105 @@ def section_divider():
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def flatten_emotion_records(raw_records: list[dict]) -> pd.DataFrame:
-    """
-    Appiattisce il JSON annidato dell'analisi emotiva dal worker
-    in un DataFrame ordinato adatto ai grafici Plotly.
-
-    Ogni riga rappresenta un volto ad un timestamp con colonne per
-    ogni punteggio emotivo, più dominant_emotion e confidence.
-    """
+    """Appiattisce il JSON e forza tipizzazioni numeriche sicure per Plotly."""
     rows = []
+    expected_emotions = ["happy", "sad", "angry", "surprise", "fear", "disgust", "neutral"]
+
     for record in raw_records:
         row: dict[str, Any] = {}
-        for key, value in record.items():
-            if isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    if isinstance(sub_value, (int, float)):
-                        row[sub_key] = sub_value
-            elif isinstance(value, (int, float)):
-                row[key] = value
-            elif isinstance(value, str):
-                row[key] = value
+
+        # 1. Estrazione campi base
+        for key in ("timestamp_second", "face_id", "dominant_emotion", "confidence"):
+            if key in record:
+                row[key] = record[key]
+
+        # 2. Estrazione emozioni (supporta sia dati annidati in 'metrics' sia piatti)
+        metrics = record.get("metrics", record)
+        for emotion_key in expected_emotions:
+            if emotion_key in metrics:
+                row[emotion_key] = metrics[emotion_key]
+
         if row:
             rows.append(row)
-    return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+
+    # FORZATURA TIPI NUMERICI (Previene crash silenziosi di Plotly)
+    if not df.empty:
+        if "timestamp_second" in df.columns:
+            df["timestamp_second"] = pd.to_numeric(df["timestamp_second"], errors="coerce").fillna(0)
+
+        for col in expected_emotions:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    return df
 
 
 def build_emotion_timeseries(df: pd.DataFrame) -> go.Figure:
-    """Costruisce un grafico multi-linea delle emozioni nel tempo."""
+    """Costruisce un grafico multi-linea solido, forzando la pulizia dei dati dei tipi per Plotly."""
+    # 1. Identifica le colonne delle emozioni presenti nel dataframe
     emotion_cols = [c for c in df.columns if c in EMOTION_CONFIG]
     if not emotion_cols:
         return None
 
+    # 2. Creiamo una copia di lavoro locale per non alterare la tabella dei dati grezzi
+    df_clean = df.copy()
 
-    if "timestamp_second" in df.columns:
-        x_data = df["timestamp_second"]
+    # 3. FORZATURA TIPI ASSE X: Garantisce che i timestamp siano numeri reali e ordinati
+    if "timestamp_second" in df_clean.columns:
+        df_clean["timestamp_second"] = pd.to_numeric(df_clean["timestamp_second"], errors="coerce")
+        # Raggruppiamo per secondo facendo la media (gestisce brillantemente il caso multi-volto)
+        df_clean = df_clean.groupby("timestamp_second")[emotion_cols].mean().reset_index()
+        df_clean = df_clean.sort_values("timestamp_second")
+        x_data = df_clean["timestamp_second"].tolist()
     else:
-        x_data = list(range(len(df)))
+        # Fallback sicuro se manca la colonna temporale
+        df_clean = df_clean.reset_index(drop=True)
+        x_data = list(range(len(df_clean)))
 
+    # 4. Costruzione del Grafico
     fig = go.Figure()
     for col in emotion_cols:
         cfg = EMOTION_CONFIG[col]
+
+        # FORZATURA TIPI ASSE Y: Converte i valori dell'emozione corrente in float puri
+        y_data = pd.to_numeric(df_clean[col], errors="coerce").fillna(0.0).tolist()
+
         fig.add_trace(go.Scatter(
             x=x_data,
-            y=df[col],
+            y=y_data,
             name=cfg["label"],
             line=dict(color=cfg["color"], width=2.5),
             mode="lines+markers",
             marker=dict(size=5),
             hovertemplate=f"<b>{cfg['label']}</b><br>"
-                          "Tempo: %{x}s<br>"
-                          "Punteggio: %{y:.1f}%<extra></extra>",
+                          "Tempo: %{{x}}s<br>"
+                          "Punteggio: %{{y:.1f}}%<extra></extra>",
         ))
 
-    fig.update_layout(
-        **PLOTLY_LAYOUT_DEFAULTS,
+    # 5. Configurazione del Layout (Rendiamo l'asse X flessibile ed auto-adattativo)
+    layout = dict(PLOTLY_LAYOUT_DEFAULTS)
+    layout.update(dict(
         xaxis=dict(
             title=dict(text="Tempo (secondi)", font=dict(color="#0f172a")),
             showgrid=True,
             gridcolor="#f1f5f9",
             zeroline=False,
             tickfont=dict(color="#0f172a"),
+            # Lasciamo che Plotly gestisca i tick in automatico per evitare crash di scala
         ),
         yaxis=dict(
             title=dict(text="Punteggio Emozione (%)", font=dict(color="#0f172a")),
             showgrid=True,
             gridcolor="#f1f5f9",
             zeroline=False,
-            range=[0, 105],
+            range=[-2, 105], # Un minimo di margine inferiore impedisce il clipping a 0
             tickfont=dict(color="#0f172a"),
         ),
         height=380,
-    )
+    ))
+    fig.update_layout(**layout)
     return fig
 
 
@@ -509,8 +538,9 @@ def build_emotion_distribution(df: pd.DataFrame) -> go.Figure:
         hovertemplate="<b>%{y}</b>: %{x:.1f}%<extra></extra>",
     ))
 
-    fig.update_layout(
-        **PLOTLY_LAYOUT_DEFAULTS,
+    # In build_emotion_distribution
+    layout = dict(PLOTLY_LAYOUT_DEFAULTS)
+    layout.update(dict(
         xaxis=dict(
             title=dict(text="Punteggio Medio (%)", font=dict(color="#0f172a")),
             showgrid=True,
@@ -523,7 +553,9 @@ def build_emotion_distribution(df: pd.DataFrame) -> go.Figure:
             tickfont=dict(color="#0f172a"),
         ),
         height=320,
-    )
+    ))
+    fig.update_layout(**layout)
+    fig.update_layout(**layout)
     return fig
 
 
@@ -550,8 +582,8 @@ def build_emotion_radar(df: pd.DataFrame) -> go.Figure:
         hovertemplate="<b>%{theta}</b>: %{r:.1f}%<extra></extra>",
     ))
 
-    fig.update_layout(
-        **PLOTLY_LAYOUT_DEFAULTS,
+    layout = dict(PLOTLY_LAYOUT_DEFAULTS)
+    layout.update(dict(
         polar=dict(
             bgcolor="rgba(0,0,0,0)",
             radialaxis=dict(
@@ -568,7 +600,8 @@ def build_emotion_radar(df: pd.DataFrame) -> go.Figure:
             ),
         ),
         height=380,
-    )
+    ))
+    fig.update_layout(**layout)
     return fig
 
 
@@ -1127,7 +1160,6 @@ def render_results():
                 "su 7 emozioni di base",
             ), unsafe_allow_html=True)
 
-    # Grafici in tab
     tab_timeline, tab_distribution, tab_radar, tab_data = st.tabs([
         "📈 Andamento", "📊 Distribuzione", "🎯 Profilo Radar", "📋 Dati Grezzi"
     ])
