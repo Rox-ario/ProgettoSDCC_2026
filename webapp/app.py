@@ -448,34 +448,32 @@ def flatten_emotion_records(raw_records: list[dict]) -> pd.DataFrame:
     return df
 
 
-def build_emotion_timeseries(df: pd.DataFrame) -> go.Figure:
-    """Costruisce un grafico multi-linea solido, forzando la pulizia dei dati dei tipi per Plotly."""
-    # 1. Identifica le colonne delle emozioni presenti nel dataframe
+def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | None = None) -> go.Figure:
+    """Costruisce un grafico multi-linea con legenda sotto e quadrati colorati."""
     emotion_cols = [c for c in df.columns if c in EMOTION_CONFIG]
     if not emotion_cols:
         return None
 
-    # 2. Creiamo una copia di lavoro locale per non alterare la tabella dei dati grezzi
+    # Filtra per le emozioni selezionate dall'utente (se non specificate, mostra tutte)
+    if selected_emotions:
+        emotion_cols = [c for c in emotion_cols if c in selected_emotions]
+    if not emotion_cols:
+        return None
+
     df_clean = df.copy()
 
-    # 3. FORZATURA TIPI ASSE X: Garantisce che i timestamp siano numeri reali e ordinati
     if "timestamp_second" in df_clean.columns:
         df_clean["timestamp_second"] = pd.to_numeric(df_clean["timestamp_second"], errors="coerce")
-        # Raggruppiamo per secondo facendo la media (gestisce brillantemente il caso multi-volto)
         df_clean = df_clean.groupby("timestamp_second")[emotion_cols].mean().reset_index()
         df_clean = df_clean.sort_values("timestamp_second")
         x_data = df_clean["timestamp_second"].tolist()
     else:
-        # Fallback sicuro se manca la colonna temporale
         df_clean = df_clean.reset_index(drop=True)
         x_data = list(range(len(df_clean)))
 
-    # 4. Costruzione del Grafico
     fig = go.Figure()
     for col in emotion_cols:
         cfg = EMOTION_CONFIG[col]
-
-        # FORZATURA TIPI ASSE Y: Converte i valori dell'emozione corrente in float puri
         y_data = pd.to_numeric(df_clean[col], errors="coerce").fillna(0.0).tolist()
 
         fig.add_trace(go.Scatter(
@@ -484,34 +482,47 @@ def build_emotion_timeseries(df: pd.DataFrame) -> go.Figure:
             name=cfg["label"],
             line=dict(color=cfg["color"], width=2.5),
             mode="lines+markers",
-            marker=dict(size=5),
+            marker=dict(size=5, symbol="square"),   # ← marker quadrato per coerenza visiva con la legenda
             hovertemplate=f"<b>{cfg['label']}</b><br>"
-                          "Tempo: %{{x}}s<br>"
-                          "Punteggio: %{{y:.1f}}%<extra></extra>",
+                          "Tempo: %{x}s<br>"
+                          "Punteggio: %{y:.1f}%<extra></extra>",
         ))
 
-    # 5. Configurazione del Layout (Rendiamo l'asse X flessibile ed auto-adattativo)
     layout = dict(PLOTLY_LAYOUT_DEFAULTS)
     layout.update(dict(
+        dragmode="zoom",
         xaxis=dict(
             title=dict(text="Tempo (secondi)", font=dict(color="#0f172a")),
-            showgrid=True,
-            gridcolor="#f1f5f9",
-            zeroline=False,
-            tickfont=dict(color="#0f172a"),
-            # Lasciamo che Plotly gestisca i tick in automatico per evitare crash di scala
+            showgrid=True, gridcolor="#f1f5f9",
+            zeroline=False, tickfont=dict(color="#0f172a"),
         ),
         yaxis=dict(
             title=dict(text="Punteggio Emozione (%)", font=dict(color="#0f172a")),
-            showgrid=True,
-            gridcolor="#f1f5f9",
-            zeroline=False,
-            range=[-2, 105], # Un minimo di margine inferiore impedisce il clipping a 0
+            showgrid=True, gridcolor="#f1f5f9",
+            zeroline=False, range=[-2, 105],
             tickfont=dict(color="#0f172a"),
         ),
-        height=380,
+        height=400,
+        # ── Legenda sotto il grafico ──────────────────────────
+        legend=dict(
+            orientation="h",        # orizzontale
+            yanchor="top",
+            y=-0.22,                # negativo = sotto l'area del grafico
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12, color="#0f172a"),
+            bgcolor="rgba(0,0,0,0)",
+            borderwidth=0,
+            # I quadrati si ottengono con traceorder e itemsizing
+            itemsizing="constant",  # stessa dimensione per tutti i simboli
+        ),
+        # Sovrascriviamo l'impostazione della legenda ereditata da PLOTLY_LAYOUT_DEFAULTS
     ))
     fig.update_layout(**layout)
+
+    # Forza il simbolo della legenda a quadrato per ogni traccia
+    fig.update_traces(legendrank=1)
+
     return fig
 
 
@@ -1168,13 +1179,25 @@ def render_results():
         if len(df) > 1:
             fig_ts = build_emotion_timeseries(df)
             if fig_ts:
-                st.plotly_chart(fig_ts, use_container_width=True, config={"displayModeBar": False})
+                st.caption(
+                    "💡 **Suggerimento:** trascina sul grafico per zoomare su un intervallo, "
+                    "doppio click per tornare alla vista completa. "
+                    "Usa i pulsanti in alto a destra per ulteriori opzioni."
+                )
+                st.plotly_chart(
+                    fig_ts,
+                    use_container_width=True,
+                    config={
+                        "displayModeBar": True,
+                        "displaylogo": False,
+                        "modeBarButtonsToRemove": ["autoScale2d", "lasso2d"],
+                        "scrollZoom": True,
+                    },
+                )
             else:
                 st.info("L'andamento temporale richiede colonne con punteggi emotivi nei dati.")
         else:
             st.info("La visualizzazione temporale richiede più punti nel tempo (analisi video).")
-
-            # Fallback per frame singolo — mostra grafico a barre
             fig_dist = build_emotion_distribution(df)
             if fig_dist:
                 st.plotly_chart(fig_dist, use_container_width=True, config={"displayModeBar": False})
