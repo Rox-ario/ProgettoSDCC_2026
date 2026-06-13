@@ -358,6 +358,13 @@ def inject_custom_css():
         border-top: 1px solid var(--border-subtle);
         margin-top: 3rem;
     }
+    .stTextInput label p,
+    .stSelectbox label p,
+    .stDateInput label p,
+    .stFileUploader label p {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -685,8 +692,8 @@ with st.sidebar:
     nav = st.radio(
         "Navigazione",
         [
-            "📊  Dashboard",
-            "📤  Ingestion Dati",
+            "📊  Data Hub", #TODO chiamalo DataHub
+            "📤  Area Input",
             "🔬  Risultati Analisi",
             "📖  Metodologia",
         ],
@@ -739,7 +746,7 @@ with st.sidebar:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PAGINA: DASHBOARD
+# PAGINA: DATA HUB
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def render_dashboard():
@@ -862,11 +869,11 @@ def render_dashboard():
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PAGINA: INGESTION DATI
+# PAGINA: Area Input
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def render_ingestion():
-    st.markdown("## Ingestion Dati")
+    st.markdown("## Centro di acquisizione dati")
     st.markdown(
         '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
         'Carica contenuti multimediali per l\'analisi automatica delle emozioni facciali.</p>',
@@ -917,10 +924,6 @@ def render_ingestion():
                 help="Data in cui il contenuto multimediale è stato originariamente registrato.",
             )
         with col_d:
-            st.markdown(
-                '<div style="height: 1.7rem;"></div>',
-                unsafe_allow_html=True,
-            )
             context_reg = st.text_input(
                 "Contesto della Registrazione",
                 placeholder="Es. Intervista clinica, test di laboratorio…",
@@ -1263,14 +1266,14 @@ def render_methodology():
     st.markdown("## Metodologia e Documentazione")
     st.markdown(
         '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
-        'Dettagli tecnici sulla pipeline di analisi, il modello IA e l\'architettura del sistema.</p>',
+        'Dettagli tecnici sul processo di analisi, gli strumenti utilizzati e l\'architettura del sistema.</p>',
         unsafe_allow_html=True,
     )
 
     section_divider()
 
     # Panoramica della pipeline
-    st.markdown("### Pipeline di Analisi")
+    st.markdown("### Come si articola il processo di analisi")
 
     st.markdown(method_card(
         "1 — Acquisizione dei Media",
@@ -1278,38 +1281,55 @@ def render_methodology():
         "Ai file viene assegnato un UUID univoco che lo possa identificare"
         " e vengono archiviati in Azure Blob Storage. I metadati (ID soggetto, "
         "data di acquisizione, sorgente, contesto) vengono salvati in modo persistente in Azure Table Storage con "
-        "PartitionKey = IDSoggetto e RowKey = UUID. Insieme, PartitionKey e RowKey formano la chiave primaria per "
+        "l'ID del soggetto (la foto o il video) assegnato PartitionKey e l'UUID assegnato come RowKey. Insieme, PartitionKey e RowKey formano la chiave primaria per "
         "identificare univocamente ogni task di analisi (anche in presenza di più file caricati dallo stesso soggetto)"
     ), unsafe_allow_html=True)
 
     st.markdown(method_card(
         "2 — Dispatch Asincrono",
-        "Un messaggio JSON contenente il riferimento al blob, la partition key e la row key viene inviato ad "
-        "Azure Queue Storage. Il sistema implementa semantiche di consegna at-least-once con un "
-        "timeout di visibilità di 5 minuti e rilevamento poison-pill (>5 tentativi di dequeue)."
+        "Il frontend pubblica in Azure Queue Storage un messaggio JSON contenente il riferimento al file "
+        "memorizzato nel Blob Storage e gli identificativi necessari al recupero dei metadati. La coda implementa una semantica di consegna at-least-once, "
+        "garantendo che ogni task venga elaborato almeno una volta anche in presenza di guasti del worker. Quando un messaggio viene prelevato, "
+        "esso diventa temporaneamente invisibile agli altri consumer tramite un meccanismo di visibility timeout (5 minuti); se il worker "
+        "completa correttamente l'elaborazione, il messaggio viene eliminato dalla coda, mentre in caso di errore o crash "
+        "torna automaticamente disponibile per un nuovo tentativo di elaborazione. Per aumentare l'affidabilità del sistema, i messaggi "
+        "che superano una soglia prefissata di tentativi falliti (oltre cinque dequeue) vengono classificati come poison pill e isolati dal "
+        "flusso di elaborazione ordinario, consentendo l'analisi e la gestione separata delle anomalie."
+
     ), unsafe_allow_html=True)
 
     st.markdown(method_card(
         "3 — Estrazione Frame (Video)",
-        "Per i file video, OpenCV estrae frame a intervalli di 1 secondo utilizzando un campionamento "
-        "FPS-aware. L'estrazione usa l'ottimizzazione grab/retrieve per saltare i frame non target "
-        "senza decodifica completa, minimizzando l'uso di memoria e CPU."
+        "Per limitare il numero di immagini da sottoporre ai servizi di Intelligenza Artificiale, "
+        "i video vengono preliminarmente campionati mediante OpenCV, estraendo un fotogramma al secondo. "
+        "L'intervallo di campionamento viene calcolato a partire dagli FPS del video, evitando assunzioni rigide "
+        "sul frame rate e garantendo risultati coerenti su contenuti eterogenei. L'adozione della tecnica grab/retrieve "
+        "permette inoltre di processare esclusivamente i frame di interesse, minimizzando il costo computazionale e migliorando "
+        "l'efficienza complessiva del worker asincrono."
+
     ), unsafe_allow_html=True)
 
     st.markdown(method_card(
         "4 — Riconoscimento Emotivo tramite IA",
-        "Ogni frame estratto viene analizzato utilizzando DeepFace con il modulo di azione emotion. "
-        "Il modello rileva tutti i volti in ogni frame e produce distribuzioni di probabilità "
-        "per sette emozioni di base: felicità, tristezza, rabbia, sorpresa, paura, disgusto e neutrale. "
-        "La confidenza del rilevamento facciale viene registrata insieme alle metriche emotive."
+        "Ciascun fotogramma estratto viene sottoposto ad analisi tramite la libreria DeepFace, "
+        "utilizzando il modulo dedicato al riconoscimento delle emozioni (emotion analysis). Per ogni frame, "
+        "il sistema identifica automaticamente tutti i volti presenti e ne valuta l'espressione facciale mediante un "
+        "modello di classificazione emotiva. L'output consiste in una distribuzione probabilistica associata a sette "
+        "emozioni fondamentali — felicità, tristezza, rabbia, sorpresa, paura, disgusto e stato neutrale — che rappresenta "
+        "il grado di appartenenza del volto a ciascuna categoria emotiva. Oltre alle metriche emozionali, viene registrato "
+        "anche il livello di confidenza del rilevamento facciale, consentendo di valutare l'affidabilità delle analisi effettuate."
     ), unsafe_allow_html=True)
 
     st.markdown(method_card(
         "5 — Persistenza dei Risultati",
-        "I risultati dell'analisi vengono serializzati come JSON e uniti all'entità originale in Table Storage "
-        "utilizzando UpdateMode.MERGE, preservando i metadati esistenti. Il flag Processed viene "
-        "impostato a True, e il messaggio dalla coda viene eliminato solo dopo la persistenza riuscita "
-        "(garanzia transazionale)."
+        "Al termine dell'elaborazione, i risultati dell'analisi vengono "
+        "serializzati in formato JSON e integrati nell'entità corrispondente memorizzata in "
+        "Azure Table Storage. L'aggiornamento viene eseguito mediante l'operazione di merge, "
+        "che consente di aggiungere o modificare esclusivamente gli attributi relativi all'analisi "
+        "senza alterare i metadati originariamente associati al contenuto multimediale. Contestualmente, "
+        "il sistema imposta il flag Processed a valore True, segnalando il completamento della pipeline di "
+        "elaborazione. Solo dopo la corretta persistenza dei risultati nello storage il messaggio viene rimosso "
+        "dalla coda, garantendo che nessun task venga considerato concluso prima che i dati siano stati salvati in modo affidabile."
     ), unsafe_allow_html=True)
 
     section_divider()
@@ -1322,12 +1342,12 @@ def render_methodology():
     with col_m1:
         st.markdown("""
         <div class="sci-card">
-            <div class="sci-card-header">Specifiche del Modello</div>
+            <div class="sci-card-header">Specifiche degli strumenti utilizzati e metodologie implementate</div>
             <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 2;">
                 <strong>Framework:</strong> DeepFace<br>
                 <strong>Backend:</strong> TensorFlow / Keras<br>
-                <strong>Rilevamento:</strong> Multi-volto, per-frame<br>
-                <strong>Output:</strong> 7 probabilità emotive (%)<br>
+                <strong>Rilevamento:</strong> Su volti singoli o Multi-volto, per-frame. In caso di video l'analisi è effettuata frame by frame<br>
+                <strong>Output:</strong> Distribuzione delle probabilità sulle sette emozioni di riferimento (%)<br>
                 <strong>Enforcement:</strong> Soft (nessun crash su mancato rilevamento)
             </div>
         </div>
@@ -1336,7 +1356,7 @@ def render_methodology():
     with col_m2:
         st.markdown("""
         <div class="sci-card">
-            <div class="sci-card-header">Tassonomia delle Emozioni</div>
+            <div class="sci-card-header">Studio delle Emozioni</div>
             <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 2;">
                 Basata sulle sei emozioni di base di Ekman più lo stato neutrale.<br><br>
                 Felicità · Tristezza · Rabbia · Sorpresa · Paura · Disgusto · Neutrale
@@ -1388,25 +1408,14 @@ def render_methodology():
 
     section_divider()
 
-    # Riferimenti bibliografici
-    st.markdown("### Riferimenti Bibliografici")
-    st.markdown("""
-    <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 2;">
-        1. Ekman, P. (1992). <em>An argument for basic emotions.</em> Cognition & Emotion, 6(3-4), 169–200.<br>
-        2. Serengil, S. I., & Ozpinar, A. (2024). <em>A Benchmark of Facial Recognition Pipelines and Co-Usability Performances of Modules.</em> Journal of Information Technologies, 17(2), 95-107.<br>
-        3. Microsoft Azure Documentation — <em>Azure Storage Services REST API Reference.</em><br>
-        4. Bradski, G. (2000). <em>The OpenCV Library.</em> Dr. Dobb's Journal of Software Tools.
-    </div>
-    """, unsafe_allow_html=True)
-
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ROUTER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if "Dashboard" in nav:
+if "Data Hub" in nav:
     render_dashboard()
-elif "Ingestion" in nav:
+elif "Area Input" in nav:
     render_ingestion()
 elif "Risultati" in nav:
     render_results()
