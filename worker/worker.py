@@ -13,6 +13,7 @@ from azure.storage.queue import QueueClient
 from azure.storage.blob import BlobServiceClient
 from azure.data.tables import TableClient, UpdateMode
 from azure.core.exceptions import HttpResponseError
+from datetime import datetime, timezone
 
 # Importazione del motore AI raccomandato dal Docente
 from deepface import DeepFace
@@ -79,7 +80,23 @@ def main():
     table_name = "MediaMetadata"
     table_client = TableClient.from_connection_string(conn_str=connection_string, table_name=table_name)
 
+    last_heartbeat = 0
+    HEARTBEAT_INTERVAL = 5  # Il worker emette un battito ogni 5 secondi
+
     while True:
+        # ─── HEARTBEAT PATTERN (Battito Cardiaco) ─────────────
+        try:
+            current_time = time.time()
+            if current_time - last_heartbeat > HEARTBEAT_INTERVAL:
+                heartbeat_entity = {
+                    "PartitionKey": "SYSTEM",
+                    "RowKey": "WORKER_HEARTBEAT",
+                    "LastSeen": datetime.now(timezone.utc).isoformat()
+                }
+                table_client.upsert_entity(entity=heartbeat_entity)
+                last_heartbeat = current_time
+        except Exception as e:
+            logger.warning(f"Impossibile inviare heartbeat: {e}")
         try:
             # Polling asincrono con Lock di Visibility a 5 minuti
             messages = queue_client.receive_messages(max_messages=1, visibility_timeout=300)

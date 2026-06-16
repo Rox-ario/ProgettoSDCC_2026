@@ -28,8 +28,8 @@ from utility.storage_manager import (
 # COSTANTI
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PLATFORM_NAME = "EmoAnalysis"
-PLATFORM_SUBTITLE = "Sistema Cloud di Riconoscimento delle Emozioni Facciali"
+PLATFORM_NAME = "Orfeo"
+PLATFORM_SUBTITLE = "Piattaforma Cloud di Affective Computing AI-Based"
 VERSION = "1.0.0"
 
 AZURITE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
@@ -374,6 +374,30 @@ def inject_custom_css():
     [data-testid="stCaptionContainer"] p {
         color: #000000 !important;
     }
+    .stTextArea div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+    .stTextArea label,
+    .stTextArea label p,
+    .stTextArea label span,
+    div[data-testid="stTextArea"] label p {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stFileUploader"] > div > div:nth-child(2) *,
+    div[data-testid="stUploadedFile"] *,
+    .stFileUploaderFileName {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
+    
+    [data-testid="stFileUploader"] > div > div:nth-child(2) button svg,
+    div[data-testid="stUploadedFile"] button svg,
+    button[title="Remove file"] svg,
+    button[aria-label="Remove file"] svg {
+        stroke: #000000 !important;
+        fill: #000000 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -387,7 +411,7 @@ def metric_card(label: str, value: str, delta: str = "", delta_class: str = "del
     return f"""
     <div class="sci-card">
         <div class="sci-card-header">{label}</div>
-        <div class="sci-card-value">{value}</div>
+        <div class="sci-card-value" title="{value}">{value}</div>
         {delta_html}
     </div>
     """
@@ -661,8 +685,8 @@ def ensure_azure_ready():
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 st.set_page_config(
-    page_title=f"{PLATFORM_NAME} — Piattaforma di Analisi Emotiva",
-    page_icon="🧠",
+    page_title=f"{PLATFORM_NAME} — Emotional Pattern Analysis",
+    page_icon="🪉",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -679,7 +703,7 @@ with st.sidebar:
     st.markdown(f"""
     <div style="padding: 0.5rem 0 1.25rem 0;">
         <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.03em;">
-            🧠 {PLATFORM_NAME}
+            🪉 {PLATFORM_NAME}
         </div>
         <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; line-height: 1.4;">
             {PLATFORM_SUBTITLE}
@@ -710,28 +734,81 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Stato del sistema
-    st.markdown("""
-    <div style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
-                letter-spacing: 0.1em; color: #64748b; margin-bottom: 0.75rem;">
-        Stato del Sistema
-    </div>
-    """, unsafe_allow_html=True)
+    # === HEALTH CHECKS & HEARTBEAT (Stato del Sistema Dinamico) ===
 
+    # 1. Bottone di Soft-Refresh per aggiornare lo stato senza ricaricare la pagina
+    col_status_1, col_status_2 = st.columns([4, 1])
+    with col_status_1:
+        st.markdown("""
+        <div style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+                    letter-spacing: 0.1em; color: #64748b; margin-bottom: 0.75rem;">
+            Stato del Sistema
+        </div>
+        """, unsafe_allow_html=True)
+    with col_status_2:
+        # Questo pulsante fa ripartire lo script aggiornando i pallini in tempo reale
+        if st.button("🔄", help="Aggiorna stato dei servizi", key="refresh_status"):
+            st.rerun()
+
+    try:
+        # 2. Check su Azure/Storage
+        tc = TableClient.from_connection_string(
+            conn_str=AZURITE_CONN,
+            table_name=TABLE_NAME,
+            retry_total=0,
+            connection_timeout=1,
+            read_timeout=1
+        )
+        next(tc.list_entities(), None)
+        color_az = "#4ade80" # Verde (Online)
+        shadow_az = "0 0 6px rgba(74,222,128,0.5)"
+
+        # 3. Check sul Worker IA tramite Heartbeat Pattern
+        try:
+            # Andiamo a leggere il battito cardiaco lasciato dal worker
+            heartbeat = tc.get_entity(partition_key="SYSTEM", row_key="WORKER_HEARTBEAT")
+            last_seen_str = heartbeat.get("LastSeen", "")
+
+            # Parsing sicuro del timestamp ISO
+            if last_seen_str.endswith("Z"):
+                last_seen_str = last_seen_str.replace("Z", "+00:00")
+            last_seen = datetime.fromisoformat(last_seen_str)
+            now = datetime.now(timezone.utc)
+
+            # Se il worker ha scritto negli ultimi 15 secondi, è in funzione! (Verde)
+            if (now - last_seen).total_seconds() <= 15:
+                color_wk = "#4ade80" # Verde
+                shadow_wk = "0 0 6px rgba(74,222,128,0.5)"
+            else:
+                color_wk = "#f87171" # Rosso (Processo morto o bloccato)
+                shadow_wk = "0 0 6px rgba(248,113,113,0.5)"
+        except Exception:
+            # L'entità non esiste ancora: Worker mai avviato (Rosso)
+            color_wk = "#f87171"
+            shadow_wk = "0 0 6px rgba(248,113,113,0.5)"
+
+    except Exception:
+        # Effetto a cascata (Cascade Failure)
+        color_az = "#f87171"
+        shadow_az = "0 0 6px rgba(248,113,113,0.5)"
+        color_wk = "#f87171"
+        shadow_wk = "0 0 6px rgba(248,113,113,0.5)"
+
+    # Renderizzazione dinamica HTML
     st.markdown(f"""
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-        <div style="width: 7px; height: 7px; border-radius: 50%; background: #4ade80;
-                    box-shadow: 0 0 6px rgba(74,222,128,0.5);"></div>
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_az};
+                    box-shadow: {shadow_az};"></div>
         <span style="font-size: 0.8rem; color: #94a3b8;">Servizi Azure</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-        <div style="width: 7px; height: 7px; border-radius: 50%; background: #4ade80;
-                    box-shadow: 0 0 6px rgba(74,222,128,0.5);"></div>
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_wk};
+                    box-shadow: {shadow_wk};"></div>
         <span style="font-size: 0.8rem; color: #94a3b8;">Worker IA</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-        <div style="width: 7px; height: 7px; border-radius: 50%; background: #4ade80;
-                    box-shadow: 0 0 6px rgba(74,222,128,0.5);"></div>
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_az};
+                    box-shadow: {shadow_az};"></div>
         <span style="font-size: 0.8rem; color: #94a3b8;">Motore di Storage</span>
     </div>
     """, unsafe_allow_html=True)
@@ -761,7 +838,7 @@ def render_dashboard():
     st.markdown("## Panoramica della Piattaforma")
     st.markdown(
         '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
-        'Metriche in tempo reale e stato di salute del sistema EmoAnalysis.</p>',
+        'Metriche in tempo reale e stato di salute del sistema Orfeo.</p>',
         unsafe_allow_html=True,
     )
 
@@ -903,52 +980,60 @@ def render_ingestion():
 
     section_divider()
 
-    # Form di ingestion
-    with st.form("ingestion_form", clear_on_submit=False):
-        st.markdown("### Metadati della Sottomissione")
+    st.markdown("### Metadati della Sottomissione")
 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            subject_id = st.text_input(
-                "ID Soggetto / Partecipante",
-                placeholder="Es. SUB_0042",
-                help="Identificativo univoco del partecipante o soggetto.",
-            )
-        with col_b:
-            source_type = st.selectbox(
-                "Sorgente del Dato",
-                [
-                    "Upload Manuale",
-                    "Dataset Pubblico (Depression Analysis)",
-                    "Sorgente Esterna",
-                ],
-            )
-
-        col_c, col_d = st.columns(2)
-        with col_c:
-            acquisition_date = st.date_input(
-                "Data di Acquisizione",
-                datetime.today(),
-                help="Data in cui il contenuto multimediale è stato originariamente registrato.",
-            )
-        with col_d:
-            context_reg = st.text_input(
-                "Contesto della Registrazione",
-                placeholder="Es. Intervista clinica, test di laboratorio…",
-            )
-
-        section_divider()
-
-        st.markdown("### File Multimediale")
-        uploaded_file = st.file_uploader(
-            "Seleziona un'immagine o un breve video (max 50 MB)",
-            type=["mp4", "avi", "jpg", "jpeg", "png"],
-            help="Formati supportati: MP4, AVI, JPG, JPEG, PNG",
+    col_a, col_b = st.columns(2)
+    with col_a:
+        subject_id = st.text_input(
+            "ID Soggetto / Partecipante",
+            placeholder="Es. SUB_0042",
+            help="Identificativo univoco del partecipante o soggetto.",
+        )
+    with col_b:
+        source_type = st.selectbox(
+            "Sorgente del Dato",
+            [
+                "Upload Manuale",
+                "Dataset Pubblico (Depression Analysis)",
+                "Sorgente Esterna",
+            ],
         )
 
-        submit_button = st.form_submit_button("Invia alla Pipeline Cloud")
+    acquisition_date = st.date_input(
+        "Data di Acquisizione",
+        datetime.today(),
+        help="Data in cui il contenuto multimediale è stato originariamente registrato.",
+    )
 
-    # Logica di sottomissione
+    context_reg = st.text_area(
+        "Contesto della Registrazione",
+        placeholder="Es. Intervista clinica, anamnesi iniziale, test di laboratorio guidato…",
+        height=100,
+    )
+
+    section_divider()
+
+    st.markdown("### File Multimediale")
+    uploaded_file = st.file_uploader(
+        "Seleziona un'immagine o un breve video (max 50 MB)",
+        type=["mp4", "avi", "jpg", "jpeg", "png"],
+        help="Formati supportati: MP4, AVI, JPG, JPEG, PNG. Puoi usare la 'X' accanto al file per rimuoverlo prima dell'invio.",
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True) # Un po' di respiro prima dei bottoni
+
+    # Bottoni (Sostituiti st.form_submit_button con normali st.button)
+    col_btn1, col_btn2 = st.columns([1, 8])
+    with col_btn1:
+        submit_button = st.button("Carica file", type="primary")
+    with col_btn2:
+        cancel_button = st.button("Rimuovi file caricato", type="secondary")
+
+    # Logica di annullamento
+    if cancel_button:
+        st.rerun()
+
+    # Logica di sottomissione (ora agganciata al bottone normale)
     if submit_button:
         if not subject_id or not uploaded_file:
             st.error("**Errore di Validazione:** Fornire sia un ID Soggetto che un file multimediale.")
@@ -1006,38 +1091,63 @@ def render_results():
         unsafe_allow_html=True,
     )
 
-    search_subject = st.text_input(
-        "ID Soggetto",
-        placeholder="Es. SUB_0042",
-        key="search_sub",
-        help="Inserisci l'ID Soggetto utilizzato durante l'ingestion dei dati.",
-    )
-
-    if not search_subject:
-        st.markdown(
-            empty_state(
-                "🔎",
-                "Inserisci un ID Soggetto",
-                "Digita un identificativo del partecipante qui sopra per cercare le analisi completate.",
-            ),
-            unsafe_allow_html=True,
-        )
-        return
-
-    # Assicuriamo che Azure sia inizializzato prima di interrogare lo storage
+    # 1. Ci assicuriamo che Azure sia pronto PRIMA di disegnare l'interfaccia
     ensure_azure_ready()
 
+    # 2. Recuperiamo i soggetti unici per popolare i suggerimenti
+    available_subjects = []
     try:
         table_client = TableClient.from_connection_string(
             conn_str=AZURITE_CONN, table_name=TABLE_NAME
         )
-        query_filter = f"PartitionKey eq '{search_subject}' and Processed eq true"
-        results = list(table_client.query_entities(query_filter=query_filter))
+        # Ottimizzazione: scarichiamo SOLO la colonna PartitionKey per non appesantire la rete
+        entities = table_client.query_entities(
+            query_filter="Processed eq true",
+            select=["PartitionKey"]
+        )
+        # Usiamo 'set' per eliminare i duplicati e 'sorted' per ordinarli alfabeticamente
+        available_subjects = sorted(list(set(ent["PartitionKey"] for ent in entities)))
+
     except HttpResponseError as e:
         st.error(f"**Errore di Storage:** Impossibile connettersi ad Azure Table Storage. Azurite è in esecuzione? — {e}")
         return
     except Exception as e:
         st.error(f"**Errore Imprevisto:** {e}")
+        return
+
+    # 3. Disegniamo il campo di ricerca con Autocompletamento (Google-style)
+    # Sostituito st.text_input con st.selectbox
+    search_subject = st.selectbox(
+        "ID Soggetto",
+        options=available_subjects,
+        index=None,  # Il parametro chiave: fa partire il campo vuoto invece di selezionare il primo della lista
+        placeholder="Digita per cercare (es. SUB_0042)...",
+        key="search_sub",
+        help="Digita le prime lettere dell'ID Soggetto per vedere i suggerimenti e selezionare il partecipante.",
+    )
+
+    # 4. Gestione dello stato vuoto (se l'utente non ha ancora selezionato nulla)
+    if not search_subject:
+        st.markdown(
+            empty_state(
+                "🔎",
+                "Ricerca un'immagine o un video analizzata/o",
+                "Inserisci l’ID di un’immagine o di un video già caricato per consultare i risultati dell’analisi.",
+            ),
+            unsafe_allow_html=True,
+        )
+        return
+
+    # 5. Recupero dei task completi per il soggetto selezionato
+    try:
+        # Manteniamo la regola di sicurezza (escaping) che abbiamo aggiunto prima!
+        safe_search_subject = search_subject.replace("'", "''")
+
+        query_filter = f"PartitionKey eq '{safe_search_subject}' and Processed eq true"
+        results = list(table_client.query_entities(query_filter=query_filter))
+
+    except HttpResponseError as e:
+        st.error(f"**Errore di Storage:** {e}")
         return
 
     if not results:
@@ -1107,12 +1217,10 @@ def render_results():
             blob_client = blob_service.get_blob_client(container=BLOB_CONTAINER, blob=blob_name)
             file_bytes = blob_client.download_blob().readall()
 
-            st.markdown("### Anteprima del Contenuto Originale")
             if mime_type.startswith("image/"):
-                st.image(file_bytes, caption=original_name, use_column_width=True)
+                st.image(file_bytes, use_column_width=True)
             elif mime_type.startswith("video/"):
                 st.video(file_bytes)
-                st.caption(original_name)
             else:
                 st.info(f"Anteprima non disponibile per il tipo MIME `{mime_type}`.")
         except Exception:
@@ -1178,7 +1286,7 @@ def render_results():
         with dc2:
             st.markdown(metric_card(
                 "Diversità Emotiva",
-                str(unique_emotions) + " emozioni rilevate",
+                f"{str(unique_emotions)} emozioni rilevate" if unique_emotions > 1 else "1 emozione rilevata" if unique_emotions == 1 else "Nessuna emozione rilevata",
                 "su 7 emozioni di base",
             ), unsafe_allow_html=True)
 
