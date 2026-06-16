@@ -182,6 +182,9 @@ def inject_custom_css():
         font-weight: 700;
         color: var(--text-primary);
         line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .sci-card-delta {
@@ -365,6 +368,12 @@ def inject_custom_css():
         color: #000000 !important;
         font-weight: 600 !important;
     }
+    [data-testid="stCaptionContainer"] {
+        color: #000000 !important;
+    }
+    [data-testid="stCaptionContainer"] p {
+        color: #000000 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -497,6 +506,7 @@ def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | No
 
     layout = dict(PLOTLY_LAYOUT_DEFAULTS)
     layout.update(dict(
+        margin=dict(b=80),  # <--- AGGIUNTA: Aumenta il margine inferiore per fare spazio alla legenda
         dragmode="zoom",
         xaxis=dict(
             title=dict(text="Tempo (secondi)", font=dict(color="#0f172a")),
@@ -509,21 +519,19 @@ def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | No
             zeroline=False, range=[-2, 105],
             tickfont=dict(color="#0f172a"),
         ),
-        height=400,
+        height=420, # Leggero aumento dell'altezza totale per compensare il margine
         # ── Legenda sotto il grafico ──────────────────────────
         legend=dict(
-            orientation="h",        # orizzontale
+            orientation="h",
             yanchor="top",
-            y=-0.22,                # negativo = sotto l'area del grafico
+            y=-0.35,                # <--- MODIFICA QUI: Sposta la legenda più in basso (prima era -0.22)
             xanchor="center",
             x=0.5,
             font=dict(size=12, color="#0f172a"),
             bgcolor="rgba(0,0,0,0)",
             borderwidth=0,
-            # I quadrati si ottengono con traceorder e itemsizing
-            itemsizing="constant",  # stessa dimensione per tutti i simboli
+            itemsizing="constant",
         ),
-        # Sovrascriviamo l'impostazione della legenda ereditata da PLOTLY_LAYOUT_DEFAULTS
     ))
     fig.update_layout(**layout)
 
@@ -1170,7 +1178,7 @@ def render_results():
         with dc2:
             st.markdown(metric_card(
                 "Diversità Emotiva",
-                str(unique_emotions),
+                str(unique_emotions) + " emozioni rilevate",
                 "su 7 emozioni di base",
             ), unsafe_allow_html=True)
 
@@ -1183,9 +1191,11 @@ def render_results():
             fig_ts = build_emotion_timeseries(df)
             if fig_ts:
                 st.caption(
-                    "💡 **Suggerimento:** trascina sul grafico per zoomare su un intervallo, "
-                    "doppio click per tornare alla vista completa. "
-                    "Usa i pulsanti in alto a destra per ulteriori opzioni."
+                    "**Suggerimenti:** \n- trascina sul grafico per zoomare su un intervallo"
+                    "\n- doppio click per tornare alla vista completa."
+                    "\n- singolo click su un colore della legenda sotto la dicitura 'Tempo' per eliminare un colore e focalizzarti sugli altri."
+                    "\n- doppio click su un colore della legenda per focalizzarti solo su esso."
+                    "\n- Usa i pulsanti in alto a destra del grafico per ulteriori opzioni."
                 )
                 st.plotly_chart(
                     fig_ts,
@@ -1200,10 +1210,7 @@ def render_results():
             else:
                 st.info("L'andamento temporale richiede colonne con punteggi emotivi nei dati.")
         else:
-            st.info("La visualizzazione temporale richiede più punti nel tempo (analisi video).")
-            fig_dist = build_emotion_distribution(df)
-            if fig_dist:
-                st.plotly_chart(fig_dist, use_container_width=True, config={"displayModeBar": False})
+            st.info("L'andamento temporale richiede più punti nel tempo. Poiché hai analizzato un'immagine singola, esplora i risultati nelle tab 'Distribuzione' e 'Profilo Radar'.")
 
     with tab_distribution:
         fig_dist = build_emotion_distribution(df)
