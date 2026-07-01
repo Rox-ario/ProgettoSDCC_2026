@@ -12,7 +12,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone
 from azure.data.tables import TableClient
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import HttpResponseError
@@ -397,6 +397,48 @@ def inject_custom_css():
     button[aria-label="Remove file"] svg {
         stroke: #000000 !important;
         fill: #000000 !important;
+    }
+    
+    .sci-table-container {
+        width: 100%;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: var(--shadow-sm);
+        margin-top: 0.5rem;
+    }
+    .sci-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        text-align: left;
+    }
+    .sci-table thead tr {
+        background-color: var(--surface-alt);
+        border-bottom: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+    }
+    .sci-table th, .sci-table td {
+        padding: 0.85rem 1.25rem;
+    }
+    .sci-table tbody tr {
+        border-bottom: 1px solid var(--border-subtle);
+        transition: background-color 0.15s ease;
+    }
+    .sci-table tbody tr:last-child {
+        border-bottom: none;
+    }
+    .sci-table tbody tr:hover {
+        background-color: var(--surface-hover);
+    }
+    .sci-table td {
+        color: var(--text-primary);
+        font-weight: 500;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -838,7 +880,7 @@ def render_dashboard():
     st.markdown("## Panoramica della Piattaforma")
     st.markdown(
         '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
-        'Metriche in tempo reale e stato di salute del sistema Orfeo.</p>',
+        'Metriche in tempo reale e stato di salute del sistema.</p>',
         unsafe_allow_html=True,
     )
 
@@ -857,10 +899,19 @@ def render_dashboard():
             conn_str=AZURITE_CONN, table_name=TABLE_NAME
         )
         all_entities = list(table_client.list_entities())
-        total_tasks = len(all_entities)
+
+        # Resettiamo il total_tasks (lo calcoleremo noi ignorando i record di sistema)
+        total_tasks = 0
 
         for ent in all_entities:
+            #Ignoriamo i record di telemetria (Heartbeat) e altri record di sistema che non rappresentano task di analisi reali
+            if ent.get("PartitionKey") == "SYSTEM":
+                continue
+
+            # Se siamo qui, è un task reale. Aggiorniamo le metriche:
+            total_tasks += 1
             unique_subjects.add(ent.get("PartitionKey", ""))
+
             if ent.get("Processed"):
                 completed_tasks += 1
                 recent_analyses.append(ent)
@@ -914,19 +965,31 @@ def render_dashboard():
     with col_left:
         st.markdown("### Analisi Recenti")
         if recent_analyses:
-            display_rows = []
-            for ent in recent_analyses[-8:]:
-                display_rows.append({
-                    "Soggetto": ent.get("PartitionKey", "—"),
-                    "File": ent.get("OriginalFileName", "—"),
-                    "Sorgente": ent.get("SourceType", "—"),
-                    "Stato": "✓ Completata",
-                })
-            st.dataframe(
-                pd.DataFrame(display_rows),
-                use_container_width=True,
-                hide_index=True,
-            )
+            # Costruzione dinamica di una tabella HTML stilizzata
+            table_html = "<div class='sci-table-container'><table class='sci-table'><thead><tr>"
+            table_html += "<th>Soggetto</th><th>File</th><th>Sorgente</th><th>Stato</th></tr></thead><tbody>"
+
+            # Iteriamo la lista al contrario per mostrare i task più recenti in cima
+            for ent in reversed(recent_analyses[-8:]):
+                subject = ent.get("PartitionKey", "—")
+                file_name = ent.get("OriginalFileName", "—")
+                source = ent.get("SourceType", "—")
+
+                # Applichiamo il troncamento al nome del file direttamente in Python per pulizia visiva
+                short_file = file_name if len(file_name) <= 25 else file_name[:22] + "..."
+
+                table_html += f"<tr>"
+                table_html += f"<td>{subject}</td>"
+                # Aggiungiamo il tooltip nativo (title) per rivelare il nome completo
+                table_html += f"<td title='{file_name}' style='color: var(--text-secondary);'>{short_file}</td>"
+                table_html += f"<td><span style='color: var(--text-secondary); font-weight: 400;'>{source}</span></td>"
+                # Sfruttiamo la nostra funzione helper per iniettare il badge HTML
+                table_html += f"<td>{badge('Completata', 'success')}</td>"
+                table_html += "</tr>"
+
+            table_html += "</tbody></table></div>"
+
+            st.markdown(table_html, unsafe_allow_html=True)
         else:
             st.markdown(
                 empty_state(
@@ -1335,12 +1398,48 @@ def render_results():
             st.info("Il grafico radar richiede colonne con punteggi emotivi.")
 
     with tab_data:
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        st.caption(f"{len(df)} record · {len(df.columns)} colonne")
+        # 1. Arrotondiamo i decimali per una lettura più pulita e leggibile
+        df_display = df.copy()
+        numeric_cols = [c for c in df_display.columns if c != 'dominant_emotion']
+        for c in numeric_cols:
+            if c in df_display.columns:
+                df_display[c] = pd.to_numeric(df_display[c]).round(3)
+
+        # 2. Costruiamo una tabella interattiva e scrollabile nativa con Plotly
+        fig_table = go.Figure(data=[go.Table(
+            header=dict(
+                values=[f"<b>{c.upper()}</b>" for c in df_display.columns],
+                fill_color='#f8fafc', # Colore di sfondo intestazioni (surface-alt)
+                align='left',
+                font=dict(color='#475569', size=11, family="Inter, sans-serif"),
+                line_color='#e2e8f0'  # Colore dei bordi
+            ),
+            cells=dict(
+                values=[df_display[c] for c in df_display.columns],
+                fill_color='#ffffff', # Colore di sfondo righe (surface)
+                align='left',
+                font=dict(color='#0f172a', size=13, family="Inter, sans-serif"),
+                line_color='#f1f5f9',
+                height=32
+            )
+        )])
+
+        dynamic_height = min(400, 40 + (len(df_display) * 32))
+
+        # 3. Rimuoviamo i margini per farla aderire perfettamente al container Streamlit
+        fig_table.update_layout(
+            margin=dict(l=0, r=0, t=0, b=0),
+            height=dynamic_height, # <-- Sostituito il 400 fisso con la variabile dinamica
+            paper_bgcolor="rgba(0,0,0,0)"
+        )
+
+        # Disegniamo la tabella disabilitando la barra degli strumenti di Plotly
+        st.plotly_chart(fig_table, use_container_width=True, config={"displayModeBar": False})
+        st.caption(f"Totale: {len(df)} record analizzati.")
 
     # Insight
     section_divider()
-    st.markdown("### Insight Analitici")
+    st.markdown("### Interpretazione dei Risultati")
 
     emotion_cols = [c for c in df.columns if c in EMOTION_CONFIG]
     if emotion_cols:
@@ -1480,49 +1579,6 @@ def render_methodology():
         """, unsafe_allow_html=True)
 
     section_divider()
-
-    # Architettura cloud
-    st.markdown("### Architettura Cloud")
-
-    st.markdown("""
-    <div class="sci-card">
-        <div class="sci-card-header">Topologia dei Servizi Azure</div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--text-secondary);">
-            <thead>
-                <tr style="border-bottom: 2px solid var(--border);">
-                    <th style="text-align: left; padding: 0.6rem 0.5rem; font-weight: 600; color: var(--text-primary);">Servizio</th>
-                    <th style="text-align: left; padding: 0.6rem 0.5rem; font-weight: 600; color: var(--text-primary);">Ruolo</th>
-                    <th style="text-align: left; padding: 0.6rem 0.5rem; font-weight: 600; color: var(--text-primary);">Risorsa</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="border-bottom: 1px solid var(--border-subtle);">
-                    <td style="padding: 0.5rem;">Azure Blob Storage</td>
-                    <td style="padding: 0.5rem;">Archiviazione media binari</td>
-                    <td style="padding: 0.5rem;"><code>multimedia-contents</code></td>
-                </tr>
-                <tr style="border-bottom: 1px solid var(--border-subtle);">
-                    <td style="padding: 0.5rem;">Azure Queue Storage</td>
-                    <td style="padding: 0.5rem;">Dispatch asincrono dei task</td>
-                    <td style="padding: 0.5rem;"><code>video-processing-queue</code></td>
-                </tr>
-                <tr style="border-bottom: 1px solid var(--border-subtle);">
-                    <td style="padding: 0.5rem;">Azure Table Storage</td>
-                    <td style="padding: 0.5rem;">Metadati + risultati (NoSQL)</td>
-                    <td style="padding: 0.5rem;"><code>MediaMetadata</code></td>
-                </tr>
-                <tr>
-                    <td style="padding: 0.5rem;">Azurite</td>
-                    <td style="padding: 0.5rem;">Emulatore sviluppo locale</td>
-                    <td style="padding: 0.5rem;"><code>127.0.0.1:10000-10002</code></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    """, unsafe_allow_html=True)
-
-    section_divider()
-
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ROUTER
