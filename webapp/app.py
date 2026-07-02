@@ -141,13 +141,13 @@ def inject_custom_css():
         border-color: #1e293b !important;
     }
 
-    section[data-testid="stSidebar"] .stRadio label span {
+    section[data-testid="stSidebar"] .stRadio label p {
         color: #cbd5e1 !important;
-        font-size: 0.9rem !important;
+        font-size: 1.1rem !important;
         font-weight: 500 !important;
     }
 
-    section[data-testid="stSidebar"] .stRadio label[data-checked="true"] span {
+    section[data-testid="stSidebar"] .stRadio label[data-checked="true"] p {
         color: #ffffff !important;
     }
 
@@ -280,15 +280,38 @@ def inject_custom_css():
     /* ── Raffinamenti form ────────────────────────────── */
     .stTextInput input,
     .stTextArea textarea,
-    .stSelectbox > div > div {
+    .stSelectbox div[data-baseweb="select"],
+    .stDateInput input {
+        background-color: var(--surface) !important;
+        color: var(--text-primary) !important;
         border-radius: var(--radius-sm) !important;
-        border-color: var(--border) !important;
+        border: 1px solid var(--border) !important;
         font-size: 0.9rem !important;
+        box-shadow: var(--shadow-sm) !important;
+        transition: all 0.2s ease;
     }
+    
     .stTextInput input:focus,
-    .stTextArea textarea:focus {
+    .stTextArea textarea:focus,
+    .stSelectbox div[data-baseweb="select"]:focus-within,
+    .stDateInput input:focus {
         border-color: var(--accent) !important;
-        box-shadow: 0 0 0 2px var(--accent-light) !important;
+        box-shadow: 0 0 0 3px var(--accent-light) !important;
+        outline: none !important;
+    }
+
+    /* Styling dell'area di Drag & Drop del File Uploader */
+    [data-testid="stFileUploader"] section {
+        background-color: var(--surface) !important;
+        border: 2px dashed var(--border) !important;
+        border-radius: var(--radius-md) !important;
+        padding: 2rem !important;
+        transition: all 0.2s ease;
+    }
+    
+    [data-testid="stFileUploader"] section:hover {
+        border-color: var(--accent) !important;
+        background-color: var(--surface-hover) !important;
     }
 
     /* ── Tab ──────────────────────────────────────────── */
@@ -439,6 +462,25 @@ def inject_custom_css():
     .sci-table td {
         color: var(--text-primary);
         font-weight: 500;
+    }
+    /* ── Nascondere Menu Sviluppatore (Deploy) ───────────────── */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* ── Fix Bottone Refresh e Bottoni Secondari ───────────────── */
+    button[kind="secondary"] {
+        background-color: transparent !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: var(--radius-sm) !important;
+        color: var(--text-secondary) !important;
+        padding: 0.2rem 0.5rem !important;
+        transition: all 0.2s ease;
+    }
+    button[kind="secondary"]:hover {
+        background-color: var(--surface-hover) !important;
+        border-color: var(--border) !important;
+        color: var(--text-primary) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1249,7 +1291,6 @@ def render_results():
 
     section_divider()
 
-    # Riepilogo metadati
     st.markdown("### Metadati del Task")
     mc1, mc2, mc3 = st.columns(3)
     with mc1:
@@ -1266,6 +1307,9 @@ def render_results():
         st.markdown(metric_card(
             "Dimensione File", size_display, badge("Elaborato", "success")
         ), unsafe_allow_html=True)
+
+    context_text = entity.get("Context", "Nessun contesto o descrizione forniti per questo file.")
+    st.markdown(insight_chip("Info", context_text), unsafe_allow_html=True)
 
     section_divider()
 
@@ -1354,7 +1398,7 @@ def render_results():
             ), unsafe_allow_html=True)
 
     tab_timeline, tab_distribution, tab_radar, tab_data = st.tabs([
-        "📈 Andamento", "📊 Distribuzione", "🎯 Profilo Radar", "📋 Dati Grezzi"
+        "📈 Andamento", "📊 Distribuzione", "🕸️ Grafico radar", "📋 Dati Grezzi"
     ])
 
     with tab_timeline:
@@ -1381,7 +1425,7 @@ def render_results():
             else:
                 st.info("L'andamento temporale richiede colonne con punteggi emotivi nei dati.")
         else:
-            st.info("L'andamento temporale richiede più punti nel tempo. Poiché hai analizzato un'immagine singola, esplora i risultati nelle tab 'Distribuzione' e 'Profilo Radar'.")
+            st.info("L'andamento temporale richiede l'analisi di più punti nel tempo. Dato che hai caricato un'immagine singola, esplora i risultati nelle tab 'Distribuzione' e 'Grafico Radar'.")
 
     with tab_distribution:
         fig_dist = build_emotion_distribution(df)
