@@ -48,8 +48,8 @@ EMOTION_CONFIG: dict[str, dict[str, str]] = {
 }
 
 PLOTLY_LAYOUT_DEFAULTS = dict(
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="#ffffff",
+    plot_bgcolor="#ffffff",
     font=dict(family="Inter, system-ui, sans-serif", color="#0f172a"),
     margin=dict(l=24, r=24, t=40, b=24),
     legend=dict(
@@ -101,9 +101,15 @@ def inject_custom_css():
         --shadow-lg:      0 4px 16px rgba(0,0,0,.08);
     }
 
-    /* ── Tipografia globale ───────────────────────────── */
+    /* ── Tipografia globale ed elementi di testo ──────── */
     html, body, [class*="css"] {
         font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    }
+    
+    /* Ingrandisce leggermente i testi del corpo dell'app */
+    .stApp p, .stApp li, .stApp td, .stApp div[data-testid="stMarkdownContainer"] p {
+        font-size: 1.02rem !important;
+        line-height: 1.6 !important;
     }
 
     /* ── Container principale ────────────────────────── */
@@ -141,20 +147,27 @@ def inject_custom_css():
         border-color: #1e293b !important;
     }
 
-    section[data-testid="stSidebar"] .stRadio label p {
+    /* Ingrandimento e rinforzo dei pulsanti di navigazione in sidebar */
+    section[data-testid="stSidebar"] .stRadio label p,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label p,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label span,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label div {
         color: #cbd5e1 !important;
-        font-size: 1.1rem !important;
-        font-weight: 500 !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
     }
 
-    section[data-testid="stSidebar"] .stRadio label[data-checked="true"] p {
+    section[data-testid="stSidebar"] .stRadio label[data-checked="true"] p,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] span,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] div {
         color: #ffffff !important;
     }
 
     /* ── Intestazioni ────────────────────────────────── */
-    h1 { font-weight: 700 !important; color: var(--text-primary) !important; letter-spacing: -0.02em !important; font-size: 1.75rem !important; }
-    h2 { font-weight: 600 !important; color: var(--text-primary) !important; letter-spacing: -0.01em !important; font-size: 1.35rem !important; }
-    h3 { font-weight: 600 !important; color: var(--text-primary) !important; font-size: 1.1rem !important; }
+    h1 { font-weight: 700 !important; color: var(--text-primary) !important; letter-spacing: -0.02em !important; font-size: 1.95rem !important; }
+    h2 { font-weight: 600 !important; color: var(--text-primary) !important; letter-spacing: -0.01em !important; font-size: 1.55rem !important; }
+    h3 { font-weight: 600 !important; color: var(--text-primary) !important; font-size: 1.25rem !important; }
 
     /* ── Card ─────────────────────────────────────────── */
     .sci-card {
@@ -169,7 +182,7 @@ def inject_custom_css():
     .sci-card:hover { box-shadow: var(--shadow-md); }
 
     .sci-card-header {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -178,7 +191,7 @@ def inject_custom_css():
     }
 
     .sci-card-value {
-        font-size: 1.75rem;
+        font-size: 1.9rem;
         font-weight: 700;
         color: var(--text-primary);
         line-height: 1.2;
@@ -188,7 +201,7 @@ def inject_custom_css():
     }
 
     .sci-card-delta {
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         font-weight: 500;
         margin-top: 0.25rem;
     }
@@ -202,7 +215,7 @@ def inject_custom_css():
         display: inline-block;
         padding: 0.2rem 0.65rem;
         border-radius: 100px;
-        font-size: 0.72rem;
+        font-size: 0.82rem;
         font-weight: 600;
         letter-spacing: 0.03em;
     }
@@ -221,13 +234,13 @@ def inject_custom_css():
         margin-bottom: 0.85rem;
     }
     .method-card h4 {
-        font-size: 0.95rem !important;
+        font-size: 1.05rem !important;
         font-weight: 600 !important;
         color: var(--text-primary) !important;
         margin-bottom: 0.35rem !important;
     }
     .method-card p {
-        font-size: 0.85rem;
+        font-size: 0.95rem;
         color: var(--text-secondary);
         line-height: 1.6;
         margin: 0;
@@ -242,7 +255,7 @@ def inject_custom_css():
         margin-bottom: 0.75rem;
     }
     .insight-chip-label {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -250,7 +263,7 @@ def inject_custom_css():
         margin-bottom: 0.3rem;
     }
     .insight-chip-text {
-        font-size: 0.88rem;
+        font-size: 0.98rem;
         color: var(--text-primary);
         line-height: 1.55;
     }
@@ -270,12 +283,12 @@ def inject_custom_css():
     }
     .empty-state-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
     .empty-state-title {
-        font-size: 1rem;
+        font-size: 1.1rem;
         font-weight: 600;
         color: var(--text-secondary);
         margin-bottom: 0.35rem;
     }
-    .empty-state-body { font-size: 0.85rem; line-height: 1.5; }
+    .empty-state-body { font-size: 0.95rem; line-height: 1.5; }
 
     /* ── Raffinamenti form ────────────────────────────── */
     .stTextInput input,
@@ -286,7 +299,7 @@ def inject_custom_css():
         color: var(--text-primary) !important;
         border-radius: var(--radius-sm) !important;
         border: 1px solid var(--border) !important;
-        font-size: 0.9rem !important;
+        font-size: 1.0rem !important;
         box-shadow: var(--shadow-sm) !important;
         transition: all 0.2s ease;
     }
@@ -321,7 +334,7 @@ def inject_custom_css():
     }
     .stTabs [data-baseweb="tab"] {
         font-weight: 500 !important;
-        font-size: 0.88rem !important;
+        font-size: 0.98rem !important;
         color: var(--text-secondary) !important;
         padding: 0.5rem 1rem !important;
         border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
@@ -338,7 +351,7 @@ def inject_custom_css():
         border: none !important;
         border-radius: var(--radius-sm) !important;
         font-weight: 600 !important;
-        font-size: 0.9rem !important;
+        font-size: 1.0rem !important;
         padding: 0.6rem 1.5rem !important;
         letter-spacing: 0.01em;
         transition: background 0.15s ease, box-shadow 0.15s ease;
@@ -351,7 +364,7 @@ def inject_custom_css():
     /* ── Expander ────────────────────────────────────── */
     .streamlit-expanderHeader {
         font-weight: 500 !important;
-        font-size: 0.88rem !important;
+        font-size: 0.98rem !important;
         color: var(--text-secondary) !important;
     }
 
@@ -370,7 +383,7 @@ def inject_custom_css():
         color: #ffffff !important;
         padding: 0.75rem 1.25rem;
         border-radius: var(--radius-sm);
-        font-size: 0.88rem;
+        font-size: 0.98rem;
         font-weight: 500;
         margin: 0.5rem 0;
     }
@@ -379,7 +392,7 @@ def inject_custom_css():
     .sci-footer {
         text-align: center;
         padding: 1.5rem 0 0.5rem 0;
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         color: var(--text-muted);
         border-top: 1px solid var(--border-subtle);
         margin-top: 3rem;
@@ -387,7 +400,9 @@ def inject_custom_css():
     .stTextInput label p,
     .stSelectbox label p,
     .stDateInput label p,
-    .stFileUploader label p {
+    .stFileUploader label p,
+    .stTextArea label p {
+        font-size: 1.05rem !important;
         color: #000000 !important;
         font-weight: 600 !important;
     }
@@ -401,7 +416,6 @@ def inject_custom_css():
         display: none !important;
     }
     .stTextArea label,
-    .stTextArea label p,
     .stTextArea label span,
     div[data-testid="stTextArea"] label p {
         color: #000000 !important;
@@ -426,7 +440,7 @@ def inject_custom_css():
         width: 100%;
         border-radius: var(--radius-md);
         border: 1px solid var(--border);
-        overflow: hidden;
+        overflow-x: auto;
         background: var(--surface);
         box-shadow: var(--shadow-sm);
         margin-top: 0.5rem;
@@ -434,7 +448,7 @@ def inject_custom_css():
     .sci-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.88rem;
+        font-size: 0.98rem;
         text-align: left;
     }
     .sci-table thead tr {
@@ -444,10 +458,10 @@ def inject_custom_css():
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        font-size: 0.75rem;
+        font-size: 0.85rem;
     }
     .sci-table th, .sci-table td {
-        padding: 0.85rem 1.25rem;
+        padding: 0.85rem 0.65rem;
     }
     .sci-table tbody tr {
         border-bottom: 1px solid var(--border-subtle);
@@ -789,7 +803,7 @@ with st.sidebar:
         <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.03em;">
             🪉 {PLATFORM_NAME}
         </div>
-        <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; line-height: 1.4;">
+        <div style="font-size: 0.88rem; color: #64748b; margin-top: 0.2rem; line-height: 1.4;">
             {PLATFORM_SUBTITLE}
         </div>
     </div>
@@ -799,12 +813,11 @@ with st.sidebar:
 
     # Navigazione
     st.markdown("""
-    <div style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+    <div style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase;
                 letter-spacing: 0.1em; color: #64748b; margin-bottom: 0.5rem;">
         Navigazione
     </div>
     """, unsafe_allow_html=True)
-
     nav = st.radio(
         "Navigazione",
         [
@@ -824,7 +837,7 @@ with st.sidebar:
     col_status_1, col_status_2 = st.columns([4, 1])
     with col_status_1:
         st.markdown("""
-        <div style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+        <div style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase;
                     letter-spacing: 0.1em; color: #64748b; margin-bottom: 0.75rem;">
             Stato del Sistema
         </div>
@@ -883,17 +896,17 @@ with st.sidebar:
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
         <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_az};
                     box-shadow: {shadow_az};"></div>
-        <span style="font-size: 0.8rem; color: #94a3b8;">Servizi Azure</span>
+        <span style="font-size: 0.92rem; color: #94a3b8;">Servizi Azure</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
         <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_wk};
                     box-shadow: {shadow_wk};"></div>
-        <span style="font-size: 0.8rem; color: #94a3b8;">Worker IA</span>
+        <span style="font-size: 0.92rem; color: #94a3b8;">Worker IA</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
         <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_az};
                     box-shadow: {shadow_az};"></div>
-        <span style="font-size: 0.8rem; color: #94a3b8;">Motore di Storage</span>
+        <span style="font-size: 0.92rem; color: #94a3b8;">Motore di Storage</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -902,12 +915,12 @@ with st.sidebar:
     # Footer accademico
     st.markdown(f"""
     <div style="padding-top: 0.25rem;">
-        <div style="font-size: 0.72rem; color: #64748b; line-height: 1.7;">
+        <div style="font-size: 0.84rem; color: #64748b; line-height: 1.7;">
             <strong style="color: #94a3b8;">Studente</strong><br>Rosario Chiappetta<br><br>
             <strong style="color: #94a3b8;">Corso</strong><br>Sistemi Distribuiti e Cloud Computing<br><br>
             <strong style="color: #94a3b8;">Anno Accademico</strong><br>2025 / 2026
         </div>
-        <div style="font-size: 0.65rem; color: #475569; margin-top: 1rem;">
+        <div style="font-size: 0.75rem; color: #475569; margin-top: 1rem;">
             v{VERSION}
         </div>
     </div>
@@ -921,7 +934,7 @@ with st.sidebar:
 def render_dashboard():
     st.markdown("## Panoramica della Piattaforma")
     st.markdown(
-        '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
+        '<p style="color: var(--text-secondary); font-size: 1.05rem; margin-top: -0.5rem;">'
         'Metriche in tempo reale e stato di salute del sistema.</p>',
         unsafe_allow_html=True,
     )
@@ -1002,7 +1015,7 @@ def render_dashboard():
     section_divider()
 
     # Analisi recenti + architettura del sistema
-    col_left, col_right = st.columns([3, 2])
+    col_left, col_right = st.columns([1.9, 1.1])
 
     with col_left:
         st.markdown("### Analisi Recenti")
@@ -1065,7 +1078,7 @@ def render_dashboard():
 def render_ingestion():
     st.markdown("## Centro di acquisizione dati")
     st.markdown(
-        '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
+        '<p style="color: var(--text-secondary); font-size: 1.05rem; margin-top: -0.5rem;">'
         'Carica contenuti multimediali per l\'analisi automatica delle emozioni facciali.</p>',
         unsafe_allow_html=True,
     )
@@ -1171,7 +1184,7 @@ def render_ingestion():
                     st.markdown(f"""
                     <div class="sci-card" style="margin-top: 0.5rem;">
                         <div class="sci-card-header">Dettagli della Sottomissione</div>
-                        <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.8;">
+                        <div style="font-size: 0.98rem; color: var(--text-secondary); line-height: 1.8;">
                             <strong>ID Task:</strong> <code>{unique_id}</code><br>
                             <strong>Riferimento Blob:</strong> <code>{blob_name}</code><br>
                             <strong>Soggetto:</strong> {subject_id}<br>
@@ -1191,7 +1204,7 @@ def render_ingestion():
 def render_results():
     st.markdown("## Risultati dell'Analisi")
     st.markdown(
-        '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
+        '<p style="color: var(--text-secondary); font-size: 1.05rem; margin-top: -0.5rem;">'
         'Recupera ed esplora i dati dell\'analisi emotiva per i task completati.</p>',
         unsafe_allow_html=True,
     )
@@ -1235,7 +1248,7 @@ def render_results():
     if not search_subject:
         st.markdown(
             empty_state(
-                "🔎",
+                "🔬",
                 "Ricerca un'immagine o un video analizzata/o",
                 "Inserisci l’ID di un’immagine o di un video già caricato per consultare i risultati dell’analisi.",
             ),
@@ -1523,7 +1536,7 @@ def render_results():
 def render_methodology():
     st.markdown("## Metodologia e Documentazione")
     st.markdown(
-        '<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.5rem;">'
+        '<p style="color: var(--text-secondary); font-size: 1.05rem; margin-top: -0.5rem;">'
         'Dettagli tecnici sul processo di analisi, gli strumenti utilizzati e l\'architettura del sistema.</p>',
         unsafe_allow_html=True,
     )
@@ -1601,7 +1614,7 @@ def render_methodology():
         st.markdown("""
         <div class="sci-card">
             <div class="sci-card-header">Specifiche degli strumenti utilizzati e metodologie implementate</div>
-            <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 2;">
+            <div style="font-size: 0.98rem; color: var(--text-secondary); line-height: 2;">
                 <strong>Framework:</strong> DeepFace<br>
                 <strong>Backend:</strong> TensorFlow / Keras<br>
                 <strong>Rilevamento:</strong> Su volti singoli o Multi-volto, per-frame. In caso di video l'analisi è effettuata frame by frame<br>
@@ -1615,7 +1628,7 @@ def render_methodology():
         st.markdown("""
         <div class="sci-card">
             <div class="sci-card-header">Studio delle Emozioni</div>
-            <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 2;">
+            <div style="font-size: 0.98rem; color: var(--text-secondary); line-height: 2;">
                 Basata sulle sei emozioni di base di Ekman più lo stato neutrale.<br><br>
                 Felicità · Tristezza · Rabbia · Sorpresa · Paura · Disgusto · Neutrale
             </div>
