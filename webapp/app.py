@@ -412,7 +412,8 @@ def inject_custom_css():
     [data-testid="stCaptionContainer"] p {
         color: #000000 !important;
     }
-    .stTextArea div[data-testid="InputInstructions"] {
+    .stTextArea div[data-testid="InputInstructions"],
+    .stTextInput div[data-testid="InputInstructions"] {
         display: none !important;
     }
     .stTextArea label,
@@ -1105,7 +1106,6 @@ def render_ingestion():
         subject_id = st.text_input(
             "ID Soggetto / Partecipante",
             placeholder="Es. SUB_0042",
-            help="Identificativo univoco del partecipante o soggetto.",
         )
     with col_b:
         source_type = st.selectbox(
@@ -1120,7 +1120,6 @@ def render_ingestion():
     acquisition_date = st.date_input(
         "Data di Acquisizione",
         datetime.today(),
-        help="Data in cui il contenuto multimediale è stato originariamente registrato.",
     )
 
     context_reg = st.text_area(
@@ -1135,7 +1134,6 @@ def render_ingestion():
     uploaded_file = st.file_uploader(
         "Seleziona un'immagine o un breve video (max 50 MB)",
         type=["mp4", "avi", "jpg", "jpeg", "png"],
-        help="Formati supportati: MP4, AVI, JPG, JPEG, PNG. Puoi usare la 'X' accanto al file per rimuoverlo prima dell'invio.",
     )
 
     st.markdown("<br>", unsafe_allow_html=True) # Un po' di respiro prima dei bottoni
@@ -1144,12 +1142,6 @@ def render_ingestion():
     col_btn1, col_btn2 = st.columns([1, 8])
     with col_btn1:
         submit_button = st.button("Carica file", type="primary")
-    with col_btn2:
-        cancel_button = st.button("Rimuovi file caricato", type="secondary")
-
-    # Logica di annullamento
-    if cancel_button:
-        st.rerun()
 
     # Logica di sottomissione (ora agganciata al bottone normale)
     if submit_button:
@@ -1179,14 +1171,12 @@ def render_ingestion():
                     save_metadata_to_table(subject_id, unique_id, metadata_payload)
                     send_message_to_queue(unique_id, blob_name, subject_id)
 
-                    st.success("**Invio completato con successo.** Il file è stato caricato e messo in coda per l'elaborazione IA.")
+                    st.success("**Invio completato con successo.** Il file è stato caricato e messo in coda per essere analizzato.")
 
                     st.markdown(f"""
                     <div class="sci-card" style="margin-top: 0.5rem;">
                         <div class="sci-card-header">Dettagli della Sottomissione</div>
                         <div style="font-size: 0.98rem; color: var(--text-secondary); line-height: 1.8;">
-                            <strong>ID Task:</strong> <code>{unique_id}</code><br>
-                            <strong>Riferimento Blob:</strong> <code>{blob_name}</code><br>
                             <strong>Soggetto:</strong> {subject_id}<br>
                             <strong>Stato:</strong> {badge("In coda", "warning")}
                         </div>
@@ -1241,7 +1231,6 @@ def render_results():
         index=None,  # Il parametro chiave: fa partire il campo vuoto invece di selezionare il primo della lista
         placeholder="Digita per cercare (es. SUB_0042)...",
         key="search_sub",
-        help="Digita le prime lettere dell'ID Soggetto per vedere i suggerimenti e selezionare il partecipante.",
     )
 
     # 4. Gestione dello stato vuoto (se l'utente non ha ancora selezionato nulla)
