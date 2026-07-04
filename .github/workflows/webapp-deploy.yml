@@ -3,7 +3,7 @@ name: Deploy Streamlit WebApp to Azure
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'webapp/**'
       - 'utility/**'
