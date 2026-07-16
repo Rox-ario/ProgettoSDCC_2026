@@ -3,9 +3,14 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
+  <component name="BackgroundAgentGlobalSettings">
+    <option name="selectedModelId" value="auto" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="47426e6c-af1e-4454-b3e0-3841f53cb09f" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/worker/Dockerfile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,11 +54,12 @@
         <option name="modeId" value="Agent" />
         <option name="model">
           <model>
-            <option name="modelType" value="builtin_family" />
+            <option name="modelType" value="builtin_id" />
             <option name="modelValue" value="auto" />
           </model>
         </option>
         <option name="targetType" value="BACKGROUND" />
+        <option name="worktreeMode" value="WORKSPACE" />
       </template>
     </option>
   </component>
@@ -83,6 +89,7 @@
     &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
     &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
     &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.project.grazie&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -185,6 +192,13 @@
       <workItem from="1783004402642" duration="344000" />
       <workItem from="1783073451021" duration="2831000" />
       <workItem from="1783092941565" duration="43000" />
+      <workItem from="1783158746735" duration="5826000" />
+      <workItem from="1783178014434" duration="74000" />
+      <workItem from="1783596755769" duration="659000" />
+      <workItem from="1783614141843" duration="29000" />
+      <workItem from="1783679981637" duration="770000" />
+      <workItem from="1783701007143" duration="32000" />
+      <workItem from="1784219588148" duration="1436000" />
     </task>
     <servers />
   </component>

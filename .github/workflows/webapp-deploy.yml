@@ -7,9 +7,7 @@ on:
     paths:
       - 'webapp/**'
       - 'utility/**'
-      - 'worker/**'
       - 'requirements.txt'
-      - 'requirements-worker.txt'
   workflow_dispatch:
 
 jobs:

@@ -69,15 +69,12 @@ def main():
         logger.error("AZURE_STORAGE_CONNECTION_STRING non configurata nel file .env")
         return
 
-    # Inizializzazione dei Client SDK di Azure Storage (Azurite locale)
     queue_client = QueueClient.from_connection_string(conn_str=connection_string, queue_name=queue_name)
     blob_service_client = BlobServiceClient.from_connection_string(conn_str=connection_string)
 
     logger.info(f"=== Worker AI in ascolto sulla coda '{queue_name}' ===")
 
-    # Connessione alla Tabella Storage per la persistenza dei risultati (Fase 3.4)
-    connection_string = "UseDevelopmentStorage=true"
-    table_name = "MediaMetadata"
+    table_name = os.getenv("TABLE_NAME", "MediaMetadata")
     table_client = TableClient.from_connection_string(conn_str=connection_string, table_name=table_name)
 
     last_heartbeat = 0
