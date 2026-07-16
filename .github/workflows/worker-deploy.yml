@@ -6,7 +6,6 @@ on:
       - master
     paths:
       - 'worker/**'
-      - 'requirements-worker.txt'
   workflow_dispatch:
 
 env:
