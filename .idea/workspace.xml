@@ -7,10 +7,10 @@
     <option name="selectedModelId" value="auto" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="47426e6c-af1e-4454-b3e0-3841f53cb09f" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/worker-deploy.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/worker-deploy.yml" afterDir="false" />
+    <list default="true" id="47426e6c-af1e-4454-b3e0-3841f53cb09f" name="Changes" comment="Refactor: Deployment del Worker">
+      <change afterPath="$PROJECT_DIR$/.azureignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/deploy.zip" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements-worker.txt" beforeDir="false" afterPath="$PROJECT_DIR$/worker/requirements-worker.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,7 +42,7 @@
     <urls />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="Security Analysis" />
+    <option name="selectedTabId" value="ProjectErrors" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
@@ -93,6 +93,11 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\rosar\Desktop\ProgettoSDCC\worker" />
+    </key>
+  </component>
   <component name="RunManager">
     <configuration default="true" type="AZURE_FUNCTION_SUPPORT" factoryName="Run Functions">
       <option name="appName" />
@@ -147,6 +152,61 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="com.microsoft.intellij.run.configuration.WebAppConfigurationType" factoryName="Azure Web App">
+      <option name="appServicePlanName" value="" />
+      <option name="appServicePlanResourceGroupName" value="" />
+      <option name="appSettingsKey" value="7f916a11-457a-45ba-a86e-d5412d774382" />
+      <option name="appSettingsToRemove" />
+      <option name="applicationLogLevel" value="Error" />
+      <option name="artifactIdentifier" />
+      <option name="azureArtifactType" />
+      <option name="config">
+        <AppServiceConfig>
+          <option name="appName" />
+          <option name="appSettingsToRemove" />
+          <option name="diagnosticConfig" />
+          <option name="pricingTier" />
+          <option name="region" />
+          <option name="resourceGroup" />
+          <option name="runtime" />
+          <option name="servicePlanName" />
+          <option name="servicePlanResourceGroup" />
+          <option name="slotConfig" />
+          <option name="subscriptionId" />
+        </AppServiceConfig>
+      </option>
+      <option name="creatingAppServicePlan" value="false" />
+      <option name="creatingNew" value="false" />
+      <option name="creatingResGrp" value="false" />
+      <option name="deployToRoot" value="true" />
+      <option name="deployToSlot" value="false" />
+      <option name="enableApplicationLog" value="false" />
+      <option name="enableDetailedErrorMessage" value="false" />
+      <option name="enableFailedRequestTracing" value="false" />
+      <option name="enableWebServerLogging" value="false" />
+      <option name="newSlotConfigurationSource" />
+      <option name="newSlotName" />
+      <option name="openBrowserAfterDeployment" value="true" />
+      <option name="operatingSystem" />
+      <option name="packaging" />
+      <option name="pricing" value="" />
+      <option name="projectBase" value="" />
+      <option name="projectType" value="" />
+      <option name="region" value="" />
+      <option name="resourceGroup" value="" />
+      <option name="slotName" />
+      <option name="slotPanelVisible" value="false" />
+      <option name="subscriptionId" value="" />
+      <option name="targetName" value="" />
+      <option name="targetPath" value="" />
+      <option name="webAppContainer" />
+      <option name="webAppId" value="" />
+      <option name="webAppJavaVersion" />
+      <option name="webAppName" value="" />
+      <option name="webServerLogQuota" value="35" />
+      <option name="webServerRetentionPeriod" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
         <item itemvalue="Python.worker" />
@@ -198,11 +258,25 @@
       <workItem from="1783614141843" duration="29000" />
       <workItem from="1783679981637" duration="770000" />
       <workItem from="1783701007143" duration="32000" />
-      <workItem from="1784219588148" duration="2070000" />
+      <workItem from="1784219588148" duration="6197000" />
+      <workItem from="1784227151120" duration="1981000" />
     </task>
+    <task id="LOCAL-00001" summary="Refactor: Deployment del Worker">
+      <option name="closed" value="true" />
+      <created>1784221811071</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1784221811071</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Refactor: Deployment del Worker" />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactor: Deployment del Worker" />
   </component>
 </project>
