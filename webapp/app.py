@@ -1351,7 +1351,18 @@ def render_results():
             blob_service = BlobServiceClient.from_connection_string(AZURITE_CONN)
             blob_client = blob_service.get_blob_client(container=BLOB_CONTAINER, blob=blob_name_json)
             blob_content = blob_client.download_blob().readall().decode('utf-8')
-            raw_records = json.loads(blob_content)
+            blob_payload = json.loads(blob_content)
+            
+            # Supporto nuovo formato {"records": [...], "debug": {...}}
+            # e retrocompatibilità con vecchio formato lista diretta
+            if isinstance(blob_payload, dict) and "records" in blob_payload:
+                debug_info = blob_payload.get("debug", {})
+                raw_records = blob_payload["records"]
+            else:
+                debug_info = {}
+                raw_records = blob_payload
+        else:
+            debug_info = {}
             
     except json.JSONDecodeError:
         st.error("**Errore Dati:** Il campo dei risultati dell'analisi contiene un JSON non valido.")
@@ -1372,10 +1383,14 @@ def render_results():
         # --- AGGIUNTA DI DEBUG ---
         st.error("INFORMAZIONI DI DEBUG AVANZATO:")
         st.code(f"raw_json (Da Table Storage): {raw_json}\nraw_records (Da Blob Storage): {raw_records}\nTipo: {type(raw_records)}")
+        if debug_info:
+            st.warning("**Dettagli elaborazione Worker:**")
+            st.code(f"Frame totali: {debug_info.get('total_frames', 'N/A')}\nFrame con volti: {debug_info.get('frames_with_faces', 'N/A')}\nErrori per frame:\n" + "\n".join(debug_info.get('frame_errors', ['Nessun errore registrato'])))
         # -------------------------
         return
 
     df = flatten_emotion_records(raw_records)
+
 
     if df.empty:
         st.markdown(

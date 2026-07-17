@@ -25,18 +25,20 @@ RUN pip install --upgrade pip && \
 # Blocco 4: Copia del codice sorgente
 COPY . .
 
-# Blocco 5: Pre-download dei pesi dei modelli DeepFace durante la build
-# In cloud (ACI), il container parte senza cache locale (~/.deepface/weights/).
-# Senza questo step, DeepFace tenta di scaricare i modelli a runtime e fallisce
-# silenziosamente (enforce_detection=False), restituendo lista vuota per ogni frame.
+# Blocco 5: Pre-download dei pesi del modello DeepFace durante la build
+# Usa DeepFace.build_model("Emotion") per scaricare i pesi ESPLICITAMENTE,
+# senza dipendere dal rilevamento di un volto in un'immagine dummy.
+# Questo garantisce che i pesi siano disponibili nell'immagine Docker in ACI.
 RUN python -c "\
-import os, numpy as np, cv2; \
-os.environ['TF_CPP_MIN_LOG_LEVEL']='3'; \
-img = np.zeros((100,100,3), dtype=np.uint8); \
-cv2.imwrite('/tmp/dummy.jpg', img); \
+import os; \
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; \
+print('Scaricamento modello Emotion...'); \
 from deepface import DeepFace; \
-DeepFace.analyze('/tmp/dummy.jpg', actions=['emotion'], enforce_detection=False, detector_backend='opencv'); \
-print('Modelli DeepFace scaricati con successo.')" || echo "Pre-download tentato (eventuali errori di rilevamento volto su dummy image sono normali)."
+DeepFace.build_model('Emotion'); \
+print('[OK] Modello Emotion scaricato e pronto.'); \
+import cv2; \
+cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'); \
+print('[OK] Cascade OpenCV caricato correttamente.')"
 
 # Comando di avvio del Worker
 CMD ["python", "worker.py"]

@@ -171,7 +171,9 @@ def main():
                 logger.info("Inizializzazione DeepFace. Avvio analisi della sequenza emotiva...")
 
                 analysis_records = []
+                frame_errors = []  # Lista errori per frame, utile per debug
                 frame_files = sorted(os.listdir(frames_dir))
+                logger.info(f"Trovati {len(frame_files)} frame da analizzare.")
 
                 for idx, frame_file in enumerate(frame_files):
                     frame_path = os.path.join(frames_dir, frame_file)
@@ -202,13 +204,23 @@ def main():
                                 logger.info(f" -> Frame {frame_file} (Secondo {idx}): Volto {face_index} -> Emozione: {face_data['dominant_emotion'].upper()} (Conf: {record['confidence']})")
 
                     except Exception as single_frame_err:
+                        err_msg = f"Frame {frame_file}: {type(single_frame_err).__name__}: {single_frame_err}"
                         logger.error(f"Impossibile analizzare il frame {frame_file}: {single_frame_err}")
+                        frame_errors.append(err_msg)
 
-                logger.info(f"Analisi AI conclusa. Estratti {len(analysis_records)} record emotivi totali.")
+                logger.info(f"Analisi AI conclusa. Estratti {len(analysis_records)} record emotivi totali. Errori su {len(frame_errors)} frame.")
 
                 logger.info("[Placeholder] Pronto per la persistenza NoSQL su Azure Table Storage...")
-                # 1. Serializzazione: Convertiamo la lista di dizionari in una stringa JSON
-                results_json = json.dumps(analysis_records)
+                # 1. Serializzazione: Convertiamo in JSON includendo anche gli errori per debug
+                results_payload = {
+                    "records": analysis_records,
+                    "debug": {
+                        "total_frames": len(frame_files),
+                        "frames_with_faces": len(analysis_records),
+                        "frame_errors": frame_errors[:20]  # Massimo 20 errori per non appesantire
+                    }
+                }
+                results_json = json.dumps(results_payload)
 
                 # 2. Salvataggio in Blob Storage (aggirando il limite 32/64 KB di Azure Table Storage)
                 results_blob_name = f"results_{current_task_id}.json"
