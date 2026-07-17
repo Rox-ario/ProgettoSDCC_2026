@@ -51,6 +51,7 @@ jobs:
               --registry-login-server ${{ env.REGISTRY_LOGIN_SERVER }} \
               --registry-username ${{ secrets.REGISTRY_USERNAME }} \
               --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+              --os-type Linux \
               --restart-policy Always \
               --environment-variables \
                 QUEUE_NAME=video-processing-queue \
