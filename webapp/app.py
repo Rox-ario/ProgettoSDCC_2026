@@ -1344,8 +1344,20 @@ def render_results():
     raw_json = entity.get("AnalysisResults", "[]")
     try:
         raw_records = json.loads(raw_json)
+        
+        # Gestione dinamica dei file di grandi dimensioni archiviati in Blob Storage
+        if isinstance(raw_records, dict) and "blob_ref" in raw_records:
+            blob_name_json = raw_records["blob_ref"]
+            blob_service = BlobServiceClient.from_connection_string(AZURITE_CONN)
+            blob_client = blob_service.get_blob_client(container=BLOB_CONTAINER, blob=blob_name_json)
+            blob_content = blob_client.download_blob().readall().decode('utf-8')
+            raw_records = json.loads(blob_content)
+            
     except json.JSONDecodeError:
         st.error("**Errore Dati:** Il campo dei risultati dell'analisi contiene un JSON non valido.")
+        return
+    except Exception as e:
+        st.error(f"**Errore Storage:** Impossibile scaricare i risultati dettagliati dal Blob Storage: {e}")
         return
 
     if not raw_records or not isinstance(raw_records, list):

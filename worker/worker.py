@@ -203,12 +203,24 @@ def main():
                 # 1. Serializzazione: Convertiamo la lista di dizionari in una stringa JSON
                 results_json = json.dumps(analysis_records)
 
-                # 3. Preparazione dell'entità per il Merge
+                # 2. Salvataggio in Blob Storage (aggirando il limite 32/64 KB di Azure Table Storage)
+                results_blob_name = f"results_{current_task_id}.json"
+                try:
+                    results_blob_client = blob_service_client.get_blob_client(container=container_name, blob=results_blob_name)
+                    results_blob_client.upload_blob(results_json, overwrite=True)
+                    logger.info(f"Risultati JSON salvati nel Blob: {results_blob_name}")
+                except Exception as e:
+                    logger.error(f"Errore upload JSON risultati: {e}")
+                    raise e
+                    
+                results_ref = json.dumps({"blob_ref": results_blob_name})
+
+                # 3. Preparazione dell'entità per il Merge (Salviamo solo il riferimento)
                 entity_update = {
                     "PartitionKey": current_subject_id,
                     "RowKey": current_task_id,
                     "Processed": True,
-                    "AnalysisResults": results_json
+                    "AnalysisResults": results_ref
                 }
 
                 try:
