@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements-worker.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements-worker.txt && \
-    pip install --no-cache-dir --force-reinstall opencv-python-headless==4.9.0.80
+    pip install --no-cache-dir --force-reinstall opencv-python-headless==4.9.0.80 && \
+    pip install --no-cache-dir --force-reinstall "numpy==1.26.4"
 
 # Blocco 4: Copia del codice sorgente
 COPY . .
