@@ -180,6 +180,10 @@ def main():
                         # Ottimizzazione: eseguiamo solo 'emotion'. enforce_detection=False evita crash protetti.
                         predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False, detector_backend='ssd')
 
+                        # Fix retrocompatibilità: DeepFace può restituire un singolo dizionario invece di una lista se trova un solo volto
+                        if isinstance(predictions, dict):
+                            predictions = [predictions]
+
                         # DeepFace restituisce una lista di dizionari (uno per ogni volto rilevato nel frame)
                         for face_index, face_data in enumerate(predictions):
                             if 'emotion' in face_data:
