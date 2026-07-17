@@ -1,4 +1,6 @@
 import sys
+import traceback
+
 print("=== WORKER: avvio in corso ===", flush=True)
 print(f"Python version: {sys.version}", flush=True)
 
@@ -16,22 +18,50 @@ import shutil
 from dotenv import load_dotenv
 print("[2/5] Import standard completati", flush=True)
 
-import cv2
-print("[3/5] OpenCV importato", flush=True)
+def _save_crash_log(error_msg: str):
+    """Salva il crash log su Blob Storage in modo da poterlo leggere anche quando az logs fallisce."""
+    try:
+        conn = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+        if not conn:
+            return
+        from azure.storage.blob import BlobServiceClient as _BSC
+        bc = _BSC.from_connection_string(conn)
+        blob = bc.get_blob_client(container="multimedia-contents", blob="worker_crash_log.txt")
+        blob.upload_blob(error_msg, overwrite=True)
+        print("[CRASH LOG] Errore salvato in Blob Storage come worker_crash_log.txt", flush=True)
+    except Exception:
+        pass
 
-from azure.storage.queue import QueueClient
-from azure.storage.blob import BlobServiceClient
-from azure.data.tables import TableClient, UpdateMode
-from azure.core.exceptions import HttpResponseError
-from datetime import datetime, timezone
-print("[4/5] Azure SDK importato", flush=True)
+try:
+    import cv2
+    print(f"[3/5] OpenCV importato: {cv2.__version__}", flush=True)
+except Exception as e:
+    msg = f"CRASH su import cv2:\n{traceback.format_exc()}"
+    print(msg, flush=True)
+    _save_crash_log(msg)
+    sys.exit(1)
+
+try:
+    from azure.storage.queue import QueueClient
+    from azure.storage.blob import BlobServiceClient
+    from azure.data.tables import TableClient, UpdateMode
+    from azure.core.exceptions import HttpResponseError
+    from datetime import datetime, timezone
+    print("[4/5] Azure SDK importato", flush=True)
+except Exception as e:
+    msg = f"CRASH su import Azure SDK:\n{traceback.format_exc()}"
+    print(msg, flush=True)
+    _save_crash_log(msg)
+    sys.exit(1)
 
 # Importazione del motore AI raccomandato dal Docente
 try:
     from deepface import DeepFace
     print("[5/5] DeepFace importato con successo", flush=True)
 except Exception as e:
-    print(f"[ERRORE CRITICO] Import DeepFace fallito: {e}", flush=True)
+    msg = f"CRASH su import DeepFace:\n{traceback.format_exc()}"
+    print(msg, flush=True)
+    _save_crash_log(msg)
     sys.exit(1)
 
 # Configurazione del Logging Applicativo chiaro e pulito
