@@ -6,5 +6,6 @@ python-dotenv==1.0.1
 azure-core
 deepface==0.0.100
 tensorflow==2.21.0
+tf-keras
 protobuf>=6.31.1,<8.0.0
 
