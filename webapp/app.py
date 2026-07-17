@@ -1661,5 +1661,4 @@ st.markdown(f"""
     {PLATFORM_NAME} v{VERSION} · Sistemi Distribuiti e Cloud Computing · A.A. 2025/2026
 </div>
 """, unsafe_allow_html=True)
-   
- 
+ 
