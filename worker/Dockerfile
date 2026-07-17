@@ -25,20 +25,5 @@ RUN pip install --upgrade pip && \
 # Blocco 4: Copia del codice sorgente
 COPY . .
 
-# Blocco 5: Pre-download dei pesi del modello DeepFace durante la build
-# Usa DeepFace.build_model("Emotion") per scaricare i pesi ESPLICITAMENTE,
-# senza dipendere dal rilevamento di un volto in un'immagine dummy.
-# Questo garantisce che i pesi siano disponibili nell'immagine Docker in ACI.
-RUN python -c "\
-import os; \
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; \
-print('Scaricamento modello Emotion...'); \
-from deepface import DeepFace; \
-DeepFace.build_model('Emotion'); \
-print('[OK] Modello Emotion scaricato e pronto.'); \
-import cv2; \
-cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'); \
-print('[OK] Cascade OpenCV caricato correttamente.')"
-
 # Comando di avvio del Worker
-CMD ["python", "worker.py"]
+CMD ["python", "worker.py"]
