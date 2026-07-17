@@ -44,6 +44,11 @@ jobs:
         uses: azure/CLI@v2
         with:
           inlineScript: |
+            az container delete \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name orfeo-worker-instance \
+              --yes || true
+
             az container create \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
               --name orfeo-worker-instance \
