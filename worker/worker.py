@@ -1,22 +1,38 @@
+import sys
+print("=== WORKER: avvio in corso ===", flush=True)
+print(f"Python version: {sys.version}", flush=True)
+
 import os
 # Silenziamo i log nativi di TensorFlow prima di importare DeepFace
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+print("[1/5] Variabili d'ambiente impostate", flush=True)
+
 import time
 import json
 import logging
 import tempfile
 import shutil
 from dotenv import load_dotenv
+print("[2/5] Import standard completati", flush=True)
+
 import cv2
+print("[3/5] OpenCV importato", flush=True)
+
 from azure.storage.queue import QueueClient
 from azure.storage.blob import BlobServiceClient
 from azure.data.tables import TableClient, UpdateMode
 from azure.core.exceptions import HttpResponseError
 from datetime import datetime, timezone
+print("[4/5] Azure SDK importato", flush=True)
 
 # Importazione del motore AI raccomandato dal Docente
-from deepface import DeepFace
+try:
+    from deepface import DeepFace
+    print("[5/5] DeepFace importato con successo", flush=True)
+except Exception as e:
+    print(f"[ERRORE CRITICO] Import DeepFace fallito: {e}", flush=True)
+    sys.exit(1)
 
 # Configurazione del Logging Applicativo chiaro e pulito
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -58,7 +58,7 @@ jobs:
             --registry-password "${{ secrets.REGISTRY_PASSWORD }}" \
             --os-type Linux \
             --cpu 1 \
-            --memory 1.5 \
+            --memory 4 \
             --restart-policy Always \
             --environment-variables \
               QUEUE_NAME=video-processing-queue \
