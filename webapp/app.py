@@ -1369,6 +1369,10 @@ def render_results():
             ),
             unsafe_allow_html=True,
         )
+        # --- AGGIUNTA DI DEBUG ---
+        st.error("INFORMAZIONI DI DEBUG AVANZATO:")
+        st.code(f"raw_json (Da Table Storage): {raw_json}\nraw_records (Da Blob Storage): {raw_records}\nTipo: {type(raw_records)}")
+        # -------------------------
         return
 
     df = flatten_emotion_records(raw_records)
