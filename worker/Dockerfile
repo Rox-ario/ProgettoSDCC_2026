@@ -18,9 +18,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Blocco 3: Installazione delle librerie Python
+# Installiamo prima le dipendenze, poi forziamo opencv-headless per sovrascrivere
+# qualsiasi versione piena di opencv che deepface potrebbe installare come dipendenza.
 COPY requirements-worker.txt .
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements-worker.txt
+    pip install --no-cache-dir -r requirements-worker.txt && \
+    pip install --no-cache-dir --force-reinstall opencv-python-headless==4.9.0.80
 
 # Blocco 4: Copia del codice sorgente
 COPY . .
