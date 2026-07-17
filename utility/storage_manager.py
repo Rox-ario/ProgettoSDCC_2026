@@ -14,7 +14,7 @@ CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 # Definiamo dei valori di fallback nel caso in cui non fossero presenti nel .env
 BLOB_CONTAINER_NAME = os.getenv("BLOB_CONTAINER_NAME", "multimedia-contents")
 QUEUE_NAME = os.getenv("QUEUE_NAME", "video-processing-queue")
-TABLE_NAME = os.getenv("TABLE_NAME", "MetadataRegistry")
+TABLE_NAME = os.getenv("TABLE_NAME", "MediaMetadata")
 
 def initialize_azure_resources():
     """

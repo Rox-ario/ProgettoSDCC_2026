@@ -213,7 +213,7 @@ def main():
 
                 try:
                     # 4. UpdateMode.MERGE aggiorna solo i campi specificati, lasciando intatti i metadati originali
-                    table_client.update_entity(entity=entity_update, mode=UpdateMode.MERGE)
+                    table_client.upsert_entity(entity=entity_update, mode=UpdateMode.MERGE)
                     print(f"[OK] Risultati salvati in Table Storage per il task: {current_task_id}")
 
                     # 5. SOLO ORA eliminiamo il messaggio dalla coda.
