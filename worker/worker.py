@@ -178,7 +178,7 @@ def main():
 
                     try:
                         # Ottimizzazione: eseguiamo solo 'emotion'. enforce_detection=False evita crash protetti.
-                        predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False)
+                        predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False, detector_backend='ssd')
 
                         # DeepFace restituisce una lista di dizionari (uno per ogni volto rilevato nel frame)
                         for face_index, face_data in enumerate(predictions):
