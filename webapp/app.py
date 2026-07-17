@@ -1051,7 +1051,7 @@ def render_dashboard():
                 empty_state(
                     "📭",
                     "Nessuna analisi disponibile",
-                    "Carica file multimediali dalla sezione Ingestion Dati per iniziare."
+                    "Carica file multimediali dalla sezione Area Input per iniziare."
                 ),
                 unsafe_allow_html=True,
             )
