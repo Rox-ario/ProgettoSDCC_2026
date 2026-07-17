@@ -178,7 +178,10 @@ def main():
 
                     try:
                         # Ottimizzazione: eseguiamo solo 'emotion'. enforce_detection=False evita crash protetti.
-                        predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False, detector_backend='ssd')
+                        # Usiamo 'opencv' (Haar cascades) invece di 'ssd':
+                        # - 'ssd' richiede download di pesi al primo avvio → fallisce silenziosamente in ACI
+                        # - 'opencv' usa i modelli già inclusi nel pacchetto OpenCV → funziona sempre
+                        predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False, detector_backend='opencv')
 
                         # Fix retrocompatibilità: DeepFace può restituire un singolo dizionario invece di una lista se trova un solo volto
                         if isinstance(predictions, dict):
