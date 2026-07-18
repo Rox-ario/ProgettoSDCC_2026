@@ -2,7 +2,13 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 
+# File locali di sviluppo
 data_emulator/
-
 .env
+*.zip
+
+# IDE
+.idea/
+*.iml
