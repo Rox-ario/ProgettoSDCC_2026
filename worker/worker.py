@@ -5,7 +5,6 @@ print("=== WORKER: avvio in corso ===", flush=True)
 print(f"Python version: {sys.version}", flush=True)
 
 import os
-# Silenziamo i log nativi di TensorFlow prima di importare DeepFace
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 print("[1/5] Variabili d'ambiente impostate", flush=True)
@@ -19,7 +18,6 @@ from dotenv import load_dotenv
 print("[2/5] Import standard completati", flush=True)
 
 def _save_crash_log(error_msg: str):
-    """Salva il crash log su Blob Storage in modo da poterlo leggere anche quando az logs fallisce."""
     try:
         conn = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
         if not conn:
@@ -54,7 +52,6 @@ except Exception as e:
     _save_crash_log(msg)
     sys.exit(1)
 
-# Importazione del motore AI raccomandato dal Docente
 try:
     from deepface import DeepFace
     print("[5/5] DeepFace importato con successo", flush=True)
@@ -64,14 +61,12 @@ except Exception as e:
     _save_crash_log(msg)
     sys.exit(1)
 
-# Configurazione del Logging Applicativo chiaro e pulito
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logging.getLogger("azure.core.pipeline").setLevel(logging.WARNING)
 logging.getLogger("azure.storage").setLevel(logging.WARNING)
 
 def process_video_frames(video_path, output_dir, interval_seconds=1):
-    """Apre il video ed estrae i frame a intervalli regolari calcolati sui FPS."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError("Impossibile aprire il file video locale con OpenCV.")
@@ -80,14 +75,13 @@ def process_video_frames(video_path, output_dir, interval_seconds=1):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     logger.info(f"[OpenCV] Video caricato. FPS: {fps:.2f} | Frame Totali: {total_frames}")
 
-    # Calcolo matematico dello step per svincolarsi dal framerate nativo
     frame_step = max(1, int(fps * interval_seconds))
     extracted_count = 0
     frame_id = 0
 
     while True:
         if frame_id % frame_step == 0:
-            ret, frame = cap.read()  # Decodifica effettiva solo del frame target
+            ret, frame = cap.read()
             if not ret:
                 break
             frame_filename = f"frame_{extracted_count:04d}.jpg"
@@ -95,7 +89,7 @@ def process_video_frames(video_path, output_dir, interval_seconds=1):
             cv2.imwrite(frame_output_path, frame)
             extracted_count += 1
         else:
-            ret = cap.grab()  # Salto veloce del frame in memoria senza decodifica grafica
+            ret = cap.grab()
             if not ret:
                 break
         frame_id += 1
@@ -124,10 +118,9 @@ def main():
     table_client = TableClient.from_connection_string(conn_str=connection_string, table_name=table_name)
 
     last_heartbeat = 0
-    HEARTBEAT_INTERVAL = 5  # Il worker emette un battito ogni 5 secondi
+    HEARTBEAT_INTERVAL = 5
 
     while True:
-        # ─── HEARTBEAT PATTERN (Battito Cardiaco) ─────────────
         try:
             current_time = time.time()
             if current_time - last_heartbeat > HEARTBEAT_INTERVAL:
@@ -141,30 +134,26 @@ def main():
         except Exception as e:
             logger.warning(f"Impossibile inviare heartbeat: {e}")
         try:
-            # Polling asincrono con Lock di Visibility a 5 minuti
             messages = queue_client.receive_messages(max_messages=1, visibility_timeout=300)
             message_list = list(messages)
 
             if not message_list:
-                time.sleep(5)  # Backoff incrementale passivo
+                time.sleep(5)
                 continue
 
             message = message_list[0]
             logger.info(f"--- Nuovo Task Rilevato! Message ID: {message.id} ---")
 
-            # Gestione della Poison Pill cumulativa
             if message.dequeue_count > 5:
                 logger.critical(f"Poison Pill rilevata! Rimozione forzata del messaggio ID: {message.id}")
                 queue_client.delete_message(message.id, message.pop_receipt)
                 continue
 
-            # Allocazione dello storage temporaneo effimero
             base_temp_dir = tempfile.mkdtemp(prefix="ai_worker_")
             frames_dir = os.path.join(base_temp_dir, "extracted_frames")
             os.makedirs(frames_dir, exist_ok=True)
 
             try:
-                # 1. Parsing sicuro dei metadati del task
                 try:
                     payload = json.loads(message.content)
 
@@ -177,7 +166,6 @@ def main():
                     queue_client.delete_message(message.id, message.pop_receipt)
                     continue
 
-                # 2. Download del file binario dal Cloud Blob Storage locale
                 local_file_path = os.path.join(base_temp_dir, blob_target)
                 logger.info(f"Scaricamento del blob '{blob_target}' in corso...")
 
@@ -186,7 +174,6 @@ def main():
                     download_file.write(blob_client.download_blob().readall())
                 logger.info("Download completato con successo.")
 
-                # 3. Pipeline di scomposizione multimediale
                 _, file_extension = os.path.splitext(blob_target.lower())
                 if file_extension in ['.mp4', '.avi', '.mov', '.mkv']:
                     process_video_frames(local_file_path, frames_dir, interval_seconds=1)
@@ -197,11 +184,10 @@ def main():
                     queue_client.delete_message(message.id, message.pop_receipt)
                     continue
 
-                # 4. FASE 3.3: INFERENZA AI TRAMITE DEEPFACE LOCALE
                 logger.info("Inizializzazione DeepFace. Avvio analisi della sequenza emotiva...")
 
                 analysis_records = []
-                frame_errors = []  # Lista errori per frame, utile per debug
+                frame_errors = []
                 frame_files = sorted(os.listdir(frames_dir))
                 logger.info(f"Trovati {len(frame_files)} frame da analizzare.")
 
@@ -209,17 +195,11 @@ def main():
                     frame_path = os.path.join(frames_dir, frame_file)
 
                     try:
-                        # Ottimizzazione: eseguiamo solo 'emotion'. enforce_detection=False evita crash protetti.
-                        # Usiamo 'skip' come detector backend:
-                        # - 'opencv' causa AttributeError su cv2.CascadeClassifier in ACI (conflitto tra opencv-python e opencv-python-headless)
-                        # - 'skip' bypassa la face detection, analizza ogni frame direttamente col modello di emozioni (TF/Keras puro)
                         predictions = DeepFace.analyze(img_path=frame_path, actions=['emotion'], enforce_detection=False, detector_backend='skip')
 
-                        # Fix retrocompatibilità: DeepFace può restituire un singolo dizionario invece di una lista se trova un solo volto
                         if isinstance(predictions, dict):
                             predictions = [predictions]
 
-                        # DeepFace restituisce una lista di dizionari (uno per ogni volto rilevato nel frame)
                         for face_index, face_data in enumerate(predictions):
                             if 'emotion' in face_data:
                                 record = {
@@ -227,7 +207,6 @@ def main():
                                     "face_id": face_index,
                                     "dominant_emotion": face_data['dominant_emotion'],
                                     "confidence": round(face_data.get('face_confidence', 0), 4),
-                                    # Punteggi percentuali grezzi di tutte le emozioni
                                     "metrics": face_data['emotion']
                                 }
                                 analysis_records.append(record)
@@ -241,7 +220,6 @@ def main():
                 logger.info(f"Analisi AI conclusa. Estratti {len(analysis_records)} record emotivi totali. Errori su {len(frame_errors)} frame.")
 
                 logger.info("[Placeholder] Pronto per la persistenza NoSQL su Azure Table Storage...")
-                # 1. Serializzazione: Convertiamo in JSON includendo anche gli errori per debug
                 results_payload = {
                     "records": analysis_records,
                     "debug": {
@@ -252,7 +230,6 @@ def main():
                 }
                 results_json = json.dumps(results_payload)
 
-                # 2. Salvataggio in Blob Storage (aggirando il limite 32/64 KB di Azure Table Storage)
                 results_blob_name = f"results_{current_task_id}.json"
                 try:
                     results_blob_client = blob_service_client.get_blob_client(container=container_name, blob=results_blob_name)
@@ -264,7 +241,6 @@ def main():
                     
                 results_ref = json.dumps({"blob_ref": results_blob_name})
 
-                # 3. Preparazione dell'entità per il Merge (Salviamo solo il riferimento)
                 entity_update = {
                     "PartitionKey": current_subject_id,
                     "RowKey": current_task_id,
@@ -273,26 +249,20 @@ def main():
                 }
 
                 try:
-                    # 4. UpdateMode.MERGE aggiorna solo i campi specificati, lasciando intatti i metadati originali
                     table_client.upsert_entity(entity=entity_update, mode=UpdateMode.MERGE)
                     print(f"[OK] Risultati salvati in Table Storage per il task: {current_task_id}")
 
-                    # 5. SOLO ORA eliminiamo il messaggio dalla coda.
-                    # Se il salvataggio sul DB fallisce, non cancelliamo il messaggio,
-                    # così la coda ce lo riproporrà in futuro (At-Least-Once Delivery).
                     queue_client.delete_message(message.id, message.pop_receipt)
                     print(f"[OK] Task {current_task_id} rimosso dalla coda.")
 
                 except HttpResponseError as e:
                     print(f"[ERRORE] Impossibile aggiornare la Table Storage: {e}")
-                    # Il messaggio NON viene cancellato e tornerà visibile nella coda tra 300 secondi
 
             except Exception as task_err:
                 logger.error(f"Errore critico durante la lavorazione del Task: {task_err}")
                 logger.info("Il messaggio non viene eliminato e tornerà disponibile nella coda.")
 
             finally:
-                # 6. Pulizia radicale del file system temporaneo effimero (Stateless constraint)
                 if os.path.exists(base_temp_dir):
                     shutil.rmtree(base_temp_dir)
                     logger.info("Directory temporanea locale rimossa. Stato effimero azzerato.")

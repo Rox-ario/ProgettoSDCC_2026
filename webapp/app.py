@@ -6,7 +6,6 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 
-# Assicuriamo che la radice del progetto sia importabile
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
@@ -24,9 +23,6 @@ from utility.storage_manager import (
     save_metadata_to_table,
 )
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# COSTANTI
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PLATFORM_NAME = "Orfeo"
 PLATFORM_SUBTITLE = "Piattaforma Cloud di Affective Computing AI-Based"
@@ -36,7 +32,6 @@ AZURITE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 TABLE_NAME = os.getenv("TABLE_NAME", "MediaMetadata")
 BLOB_CONTAINER = os.getenv("BLOB_CONTAINER_NAME", "multimedia-contents")
 
-# Configurazione visualizzazione emozioni — ordine e colori per grafici coerenti
 EMOTION_CONFIG: dict[str, dict[str, str]] = {
     "happy":    {"label": "Felicità", "color": "#4ade80"},
     "sad":      {"label": "Tristezza", "color": "#60a5fa"},
@@ -63,12 +58,8 @@ PLOTLY_LAYOUT_DEFAULTS = dict(
 )
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CSS PERSONALIZZATO
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def inject_custom_css():
-    """Inietta gli override CSS per il tema scientifico."""
     st.markdown("""
     <style>
     /* ── Google Font ─────────────────────────────────── */
@@ -501,9 +492,6 @@ def inject_custom_css():
     """, unsafe_allow_html=True)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# COMPONENTI HELPER
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def metric_card(label: str, value: str, delta: str = "", delta_class: str = "delta-neutral") -> str:
     delta_html = f'<div class="sci-card-delta {delta_class}">{delta}</div>' if delta else ""
@@ -547,12 +535,8 @@ def section_divider():
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# HELPER DATI
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def flatten_emotion_records(raw_records: list[dict]) -> pd.DataFrame:
-    """Appiattisce il JSON e forza tipizzazioni numeriche sicure per Plotly."""
     rows = []
     expected_emotions = ["happy", "sad", "angry", "surprise", "fear", "disgust", "neutral"]
 
@@ -575,7 +559,6 @@ def flatten_emotion_records(raw_records: list[dict]) -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # FORZATURA TIPI NUMERICI (Previene crash silenziosi di Plotly)
     if not df.empty:
         if "timestamp_second" in df.columns:
             df["timestamp_second"] = pd.to_numeric(df["timestamp_second"], errors="coerce").fillna(0)
@@ -588,12 +571,10 @@ def flatten_emotion_records(raw_records: list[dict]) -> pd.DataFrame:
 
 
 def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | None = None) -> go.Figure:
-    """Costruisce un grafico multi-linea con legenda sotto e quadrati colorati."""
     emotion_cols = [c for c in df.columns if c in EMOTION_CONFIG]
     if not emotion_cols:
         return None
 
-    # Filtra per le emozioni selezionate dall'utente (se non specificate, mostra tutte)
     if selected_emotions:
         emotion_cols = [c for c in emotion_cols if c in selected_emotions]
     if not emotion_cols:
@@ -621,7 +602,7 @@ def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | No
             name=cfg["label"],
             line=dict(color=cfg["color"], width=2.5),
             mode="lines+markers",
-            marker=dict(size=5, symbol="square"),   # ← marker quadrato per coerenza visiva con la legenda
+            marker=dict(size=5, symbol="square"),
             hovertemplate=f"<b>{cfg['label']}</b><br>"
                           "Tempo: %{x}s<br>"
                           "Punteggio: %{y:.1f}%<extra></extra>",
@@ -629,7 +610,7 @@ def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | No
 
     layout = dict(PLOTLY_LAYOUT_DEFAULTS)
     layout.update(dict(
-        margin=dict(b=80),  # <--- AGGIUNTA: Aumenta il margine inferiore per fare spazio alla legenda
+        margin=dict(b=80),
         dragmode="zoom",
         xaxis=dict(
             title=dict(text="Tempo (secondi)", font=dict(color="#0f172a")),
@@ -642,12 +623,12 @@ def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | No
             zeroline=False, range=[-2, 105],
             tickfont=dict(color="#0f172a"),
         ),
-        height=420, # Leggero aumento dell'altezza totale per compensare il margine
+        height=420,
         # ── Legenda sotto il grafico ──────────────────────────
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.35,                # <--- MODIFICA QUI: Sposta la legenda più in basso (prima era -0.22)
+            y=-0.35,
             xanchor="center",
             x=0.5,
             font=dict(size=12, color="#0f172a"),
@@ -658,14 +639,12 @@ def build_emotion_timeseries(df: pd.DataFrame, selected_emotions: list[str] | No
     ))
     fig.update_layout(**layout)
 
-    # Forza il simbolo della legenda a quadrato per ogni traccia
     fig.update_traces(legendrank=1)
 
     return fig
 
 
 def build_emotion_distribution(df: pd.DataFrame) -> go.Figure:
-    """Costruisce un grafico a barre orizzontali dei punteggi medi."""
     emotion_cols = [c for c in df.columns if c in EMOTION_CONFIG]
     if not emotion_cols:
         return None
@@ -682,7 +661,6 @@ def build_emotion_distribution(df: pd.DataFrame) -> go.Figure:
         marker=dict(
             color=colors,
             line=dict(width=0),
-            # Rimosso cornerradius per compatibilità
         ),
         hovertemplate="<b>%{y}</b>: %{x:.1f}%<extra></extra>",
     ))
@@ -709,7 +687,6 @@ def build_emotion_distribution(df: pd.DataFrame) -> go.Figure:
 
 
 def build_emotion_radar(df: pd.DataFrame) -> go.Figure:
-    """Costruisce un grafico radar delle intensità emotive medie."""
     emotion_cols = [c for c in df.columns if c in EMOTION_CONFIG]
     if not emotion_cols:
         return None
@@ -717,7 +694,6 @@ def build_emotion_radar(df: pd.DataFrame) -> go.Figure:
     means = df[emotion_cols].mean()
     labels = [EMOTION_CONFIG[e]["label"] for e in means.index]
     values = means.values.tolist()
-    # Chiudiamo il poligono
     labels_closed = labels + [labels[0]]
     values_closed = values + [values[0]]
 
@@ -754,13 +730,9 @@ def build_emotion_radar(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# BOOTSTRAP AZURE (caricamento lazy, alla prima interazione)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @st.cache_resource
 def bootstrap_azure():
-    """Inizializza le risorse Azure (Azurite) esattamente una volta."""
     try:
         initialize_azure_resources()
         return True
@@ -768,20 +740,15 @@ def bootstrap_azure():
         print(f"[ATTENZIONE] Bootstrap Azure fallito: {e}")
         return False
 
-# Inizializzazione al primo utilizzo (attivata dall'interazione utente)
 _azure_initialized = False
 
 def ensure_azure_ready():
-    """Assicura che Azure sia inizializzato prima delle operazioni che lo richiedono."""
     global _azure_initialized
     if not _azure_initialized:
         _azure_initialized = bootstrap_azure()
     return _azure_initialized
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CONFIGURAZIONE PAGINA E TEMA
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 st.set_page_config(
     page_title=f"{PLATFORM_NAME} — Emotional Pattern Analysis",
@@ -793,12 +760,8 @@ st.set_page_config(
 inject_custom_css()
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SIDEBAR
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 with st.sidebar:
-    # Identità della piattaforma
     st.markdown(f"""
     <div style="padding: 0.5rem 0 1.25rem 0;">
         <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.03em;">
@@ -812,7 +775,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Navigazione
     st.markdown("""
     <div style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase;
                 letter-spacing: 0.1em; color: #64748b; margin-bottom: 0.5rem;">
@@ -831,10 +793,6 @@ with st.sidebar:
     )
 
     st.markdown("---")
-
-    # === HEALTH CHECKS & HEARTBEAT (Stato del Sistema Dinamico) ===
-
-    # 1. Bottone di Soft-Refresh per aggiornare lo stato senza ricaricare la pagina
     col_status_1, col_status_2 = st.columns([4, 1])
     with col_status_1:
         st.markdown("""
@@ -844,12 +802,10 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
     with col_status_2:
-        # Questo pulsante fa ripartire lo script aggiornando i pallini in tempo reale
         if st.button("🔄", help="Aggiorna stato dei servizi", key="refresh_status"):
             st.rerun()
 
     try:
-        # 2. Check su Azure/Storage
         tc = TableClient.from_connection_string(
             conn_str=AZURITE_CONN,
             table_name=TABLE_NAME,
@@ -861,38 +817,30 @@ with st.sidebar:
         color_az = "#4ade80" # Verde (Online)
         shadow_az = "0 0 6px rgba(74,222,128,0.5)"
 
-        # 3. Check sul Worker IA tramite Heartbeat Pattern
         try:
-            # Andiamo a leggere il battito cardiaco lasciato dal worker
             heartbeat = tc.get_entity(partition_key="SYSTEM", row_key="WORKER_HEARTBEAT")
             last_seen_str = heartbeat.get("LastSeen", "")
 
-            # Parsing sicuro del timestamp ISO
             if last_seen_str.endswith("Z"):
                 last_seen_str = last_seen_str.replace("Z", "+00:00")
             last_seen = datetime.fromisoformat(last_seen_str)
             now = datetime.now(timezone.utc)
 
-            # Se il worker ha scritto negli ultimi 15 secondi, è in funzione! (Verde)
             if (now - last_seen).total_seconds() <= 15:
                 color_wk = "#4ade80" # Verde
                 shadow_wk = "0 0 6px rgba(74,222,128,0.5)"
             else:
-                color_wk = "#f87171" # Rosso (Processo morto o bloccato)
                 shadow_wk = "0 0 6px rgba(248,113,113,0.5)"
         except Exception:
-            # L'entità non esiste ancora: Worker mai avviato (Rosso)
             color_wk = "#f87171"
             shadow_wk = "0 0 6px rgba(248,113,113,0.5)"
 
     except Exception:
-        # Effetto a cascata (Cascade Failure)
         color_az = "#f87171"
         shadow_az = "0 0 6px rgba(248,113,113,0.5)"
         color_wk = "#f87171"
         shadow_wk = "0 0 6px rgba(248,113,113,0.5)"
 
-    # Renderizzazione dinamica HTML
     st.markdown(f"""
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
         <div style="width: 7px; height: 7px; border-radius: 50%; background: {color_az};
@@ -913,7 +861,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Footer accademico
     st.markdown(f"""
     <div style="padding-top: 0.25rem;">
         <div style="font-size: 0.84rem; color: #64748b; line-height: 1.7;">
@@ -928,9 +875,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PAGINA: DATA HUB
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def render_dashboard():
     st.markdown("## Panoramica della Piattaforma")
@@ -940,14 +884,12 @@ def render_dashboard():
         unsafe_allow_html=True,
     )
 
-    # Tentativo di caricare metriche live da Azure Table
     total_tasks = 0
     completed_tasks = 0
     pending_tasks = 0
     unique_subjects = set()
     recent_analyses = []
 
-    # Assicuriamo che Azure sia inizializzato prima di accedere allo storage
     ensure_azure_ready()
 
     try:
@@ -956,15 +898,12 @@ def render_dashboard():
         )
         all_entities = list(table_client.list_entities())
 
-        # Resettiamo il total_tasks (lo calcoleremo noi ignorando i record di sistema)
         total_tasks = 0
 
         for ent in all_entities:
-            #Ignoriamo i record di telemetria (Heartbeat) e altri record di sistema che non rappresentano task di analisi reali
             if ent.get("PartitionKey") == "SYSTEM":
                 continue
 
-            # Se siamo qui, è un task reale. Aggiorniamo le metriche:
             total_tasks += 1
             unique_subjects.add(ent.get("PartitionKey", ""))
 
@@ -975,12 +914,11 @@ def render_dashboard():
                 pending_tasks += 1
 
     except Exception:
-        pass  # degradazione controllata — mostra stato zero
+        pass
 
     num_subjects = len(unique_subjects)
     completion_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
 
-    # Riga KPI
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
@@ -1015,31 +953,25 @@ def render_dashboard():
 
     section_divider()
 
-    # Analisi recenti + architettura del sistema
     col_left, col_right = st.columns([1.9, 1.1])
 
     with col_left:
         st.markdown("### Analisi Recenti")
         if recent_analyses:
-            # Costruzione dinamica di una tabella HTML stilizzata
             table_html = "<div class='sci-table-container'><table class='sci-table'><thead><tr>"
             table_html += "<th>Soggetto</th><th>File</th><th>Sorgente</th><th>Stato</th></tr></thead><tbody>"
 
-            # Iteriamo la lista al contrario per mostrare i task più recenti in cima
             for ent in reversed(recent_analyses[-8:]):
                 subject = ent.get("PartitionKey", "—")
                 file_name = ent.get("OriginalFileName", "—")
                 source = ent.get("SourceType", "—")
 
-                # Applichiamo il troncamento al nome del file direttamente in Python per pulizia visiva
                 short_file = file_name if len(file_name) <= 25 else file_name[:22] + "..."
 
                 table_html += f"<tr>"
                 table_html += f"<td>{subject}</td>"
-                # Aggiungiamo il tooltip nativo (title) per rivelare il nome completo
                 table_html += f"<td title='{file_name}' style='color: var(--text-secondary);'>{short_file}</td>"
                 table_html += f"<td><span style='color: var(--text-secondary); font-weight: 400;'>{source}</span></td>"
-                # Sfruttiamo la nostra funzione helper per iniettare il badge HTML
                 table_html += f"<td>{badge('Completata', 'success')}</td>"
                 table_html += "</tr>"
 
@@ -1072,9 +1004,6 @@ def render_dashboard():
         ), unsafe_allow_html=True)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PAGINA: Area Input
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def render_ingestion():
     st.markdown("## Centro di acquisizione dati")
@@ -1136,14 +1065,12 @@ def render_ingestion():
         type=["mp4", "avi", "jpg", "jpeg", "png"],
     )
 
-    st.markdown("<br>", unsafe_allow_html=True) # Un po' di respiro prima dei bottoni
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # Bottoni (Sostituiti st.form_submit_button con normali st.button)
     col_btn1, col_btn2 = st.columns([1, 8])
     with col_btn1:
         submit_button = st.button("Carica file", type="primary")
 
-    # Logica di sottomissione (ora agganciata al bottone normale)
     if submit_button:
         if not subject_id or not uploaded_file:
             st.error("**Errore di Validazione:** Fornire sia un ID Soggetto che un file multimediale.")
@@ -1187,9 +1114,6 @@ def render_ingestion():
                     st.error(f"**Errore Cloud:** {e}")
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PAGINA: RISULTATI ANALISI
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def render_results():
     st.markdown("## Risultati dell'Analisi")
@@ -1199,21 +1123,17 @@ def render_results():
         unsafe_allow_html=True,
     )
 
-    # 1. Ci assicuriamo che Azure sia pronto PRIMA di disegnare l'interfaccia
     ensure_azure_ready()
 
-    # 2. Recuperiamo i soggetti unici per popolare i suggerimenti
     available_subjects = []
     try:
         table_client = TableClient.from_connection_string(
             conn_str=AZURITE_CONN, table_name=TABLE_NAME
         )
-        # Ottimizzazione: scarichiamo SOLO la colonna PartitionKey per non appesantire la rete
         entities = table_client.query_entities(
             query_filter="Processed eq true",
             select=["PartitionKey"]
         )
-        # Usiamo 'set' per eliminare i duplicati e 'sorted' per ordinarli alfabeticamente
         available_subjects = sorted(list(set(ent["PartitionKey"] for ent in entities)))
 
     except HttpResponseError as e:
@@ -1223,17 +1143,15 @@ def render_results():
         st.error(f"**Errore Imprevisto:** {e}")
         return
 
-    # 3. Disegniamo il campo di ricerca con Autocompletamento (Google-style)
-    # Sostituito st.text_input con st.selectbox
+
     search_subject = st.selectbox(
         "ID Soggetto",
         options=available_subjects,
-        index=None,  # Il parametro chiave: fa partire il campo vuoto invece di selezionare il primo della lista
+        index=None,
         placeholder="Digita per cercare (es. SUB_0042)...",
         key="search_sub",
     )
 
-    # 4. Gestione dello stato vuoto (se l'utente non ha ancora selezionato nulla)
     if not search_subject:
         st.markdown(
             empty_state(
@@ -1245,9 +1163,7 @@ def render_results():
         )
         return
 
-    # 5. Recupero dei task completi per il soggetto selezionato
     try:
-        # Manteniamo la regola di sicurezza (escaping) che abbiamo aggiunto prima!
         safe_search_subject = search_subject.replace("'", "''")
 
         query_filter = f"PartitionKey eq '{safe_search_subject}' and Processed eq true"
@@ -1268,7 +1184,6 @@ def render_results():
         )
         return
 
-    # Selettore task
     st.markdown(f"""
     <div style="margin: 0.5rem 0 1rem 0;">
         {badge(f"{len(results)} completate", "success")}
@@ -1315,7 +1230,6 @@ def render_results():
 
     section_divider()
 
-    # Anteprima media
     blob_name = entity.get("BlobName", "")
     mime_type = entity.get("MimeType", "")
     original_name = entity.get("OriginalFileName", "File")
@@ -1340,21 +1254,17 @@ def render_results():
 
     section_divider()
 
-    # Grafici analisi emotiva
     raw_json = entity.get("AnalysisResults", "[]")
     try:
         raw_records = json.loads(raw_json)
         
-        # Gestione dinamica dei file di grandi dimensioni archiviati in Blob Storage
         if isinstance(raw_records, dict) and "blob_ref" in raw_records:
             blob_name_json = raw_records["blob_ref"]
             blob_service = BlobServiceClient.from_connection_string(AZURITE_CONN)
             blob_client = blob_service.get_blob_client(container=BLOB_CONTAINER, blob=blob_name_json)
             blob_content = blob_client.download_blob().readall().decode('utf-8')
             blob_payload = json.loads(blob_content)
-            
-            # Supporto nuovo formato {"records": [...], "debug": {...}}
-            # e retrocompatibilità con vecchio formato lista diretta
+
             if isinstance(blob_payload, dict) and "records" in blob_payload:
                 debug_info = blob_payload.get("debug", {})
                 raw_records = blob_payload["records"]
@@ -1380,13 +1290,11 @@ def render_results():
             ),
             unsafe_allow_html=True,
         )
-        # --- AGGIUNTA DI DEBUG ---
         st.error("INFORMAZIONI DI DEBUG AVANZATO:")
         st.code(f"raw_json (Da Table Storage): {raw_json}\nraw_records (Da Blob Storage): {raw_records}\nTipo: {type(raw_records)}")
         if debug_info:
             st.warning("**Dettagli elaborazione Worker:**")
             st.code(f"Frame totali: {debug_info.get('total_frames', 'N/A')}\nFrame con volti: {debug_info.get('frames_with_faces', 'N/A')}\nErrori per frame:\n" + "\n".join(debug_info.get('frame_errors', ['Nessun errore registrato'])))
-        # -------------------------
         return
 
     df = flatten_emotion_records(raw_records)
@@ -1401,13 +1309,11 @@ def render_results():
 
     st.markdown("### Analisi delle Emozioni")
 
-    # Riepilogo emozione dominante
     if "dominant_emotion" in df.columns:
         dominant_counts = df["dominant_emotion"].value_counts()
         dominant_most = dominant_counts.index[0] if len(dominant_counts) > 0 else "—"
         unique_emotions = len(dominant_counts)
 
-        # Mappa per tradurre l'emozione dominante
         emotion_translate = {
             "happy": "Felicità", "sad": "Tristezza", "angry": "Rabbia",
             "surprise": "Sorpresa", "fear": "Paura", "disgust": "Disgusto",
@@ -1475,21 +1381,19 @@ def render_results():
             st.info("Il grafico radar richiede colonne con punteggi emotivi.")
 
     with tab_data:
-        # 1. Arrotondiamo i decimali per una lettura più pulita e leggibile
         df_display = df.copy()
         numeric_cols = [c for c in df_display.columns if c != 'dominant_emotion']
         for c in numeric_cols:
             if c in df_display.columns:
                 df_display[c] = pd.to_numeric(df_display[c]).round(3)
 
-        # 2. Costruiamo una tabella interattiva e scrollabile nativa con Plotly
         fig_table = go.Figure(data=[go.Table(
             header=dict(
                 values=[f"<b>{c.upper()}</b>" for c in df_display.columns],
-                fill_color='#f8fafc', # Colore di sfondo intestazioni (surface-alt)
+                fill_color='#f8fafc',
                 align='left',
                 font=dict(color='#475569', size=11, family="Inter, sans-serif"),
-                line_color='#e2e8f0'  # Colore dei bordi
+                line_color='#e2e8f0'
             ),
             cells=dict(
                 values=[df_display[c] for c in df_display.columns],
@@ -1503,18 +1407,15 @@ def render_results():
 
         dynamic_height = min(400, 40 + (len(df_display) * 32))
 
-        # 3. Rimuoviamo i margini per farla aderire perfettamente al container Streamlit
         fig_table.update_layout(
             margin=dict(l=0, r=0, t=0, b=0),
-            height=dynamic_height, # <-- Sostituito il 400 fisso con la variabile dinamica
+            height=dynamic_height,
             paper_bgcolor="rgba(0,0,0,0)"
         )
 
-        # Disegniamo la tabella disabilitando la barra degli strumenti di Plotly
         st.plotly_chart(fig_table, use_container_width=True, config={"displayModeBar": False})
         st.caption(f"Totale: {len(df)} record analizzati.")
 
-    # Insight
     section_divider()
     st.markdown("### Interpretazione dei Risultati")
 
@@ -1539,7 +1440,6 @@ def render_results():
             ), unsafe_allow_html=True)
 
         if len(df) > 1:
-            # Insight sulla volatilità
             stds = df[emotion_cols].std()
             most_volatile = stds.idxmax()
             st.markdown(insight_chip(
@@ -1549,9 +1449,6 @@ def render_results():
             ), unsafe_allow_html=True)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PAGINA: METODOLOGIA
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def render_methodology():
     st.markdown("## Metodologia e Documentazione")
@@ -1563,7 +1460,6 @@ def render_methodology():
 
     section_divider()
 
-    # Panoramica della pipeline
     st.markdown("### Come si articola il processo di analisi")
 
     st.markdown(method_card(
@@ -1625,7 +1521,6 @@ def render_methodology():
 
     section_divider()
 
-    # Dettagli del modello emotivo
     st.markdown("### Modello di Classificazione delle Emozioni")
 
     col_m1, col_m2 = st.columns(2)

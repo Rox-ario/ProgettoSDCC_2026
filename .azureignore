@@ -2,3 +2,4 @@ venv/
 data_emulator/
 .idea/
 __pycache__/
+.env
